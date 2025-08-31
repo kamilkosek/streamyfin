@@ -5,7 +5,7 @@ import { Image } from "expo-image";
 import { useRouter, useSegments } from "expo-router";
 import { useAtom } from "jotai";
 import React, { useCallback, useMemo } from "react";
-import { Dimensions, View, type ViewProps } from "react-native";
+import { Dimensions, Platform, View, type ViewProps } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -21,11 +21,16 @@ import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
 import { getBackdropUrl } from "@/utils/jellyfin/image/getBackdropUrl";
 import { getLogoImageUrlById } from "@/utils/jellyfin/image/getLogoImageUrlById";
-import { itemRouter } from "../common/TouchableItemRouter";
+import { itemRouter, TouchableItemRouter } from "../common/TouchableItemRouter";
 
-interface Props extends ViewProps {}
+interface Props extends ViewProps {
+  hasTVPreferredFocus?: boolean;
+}
 
-export const LargeMovieCarousel: React.FC<Props> = ({ ...props }) => {
+export const LargeMovieCarousel: React.FC<Props> = ({
+  hasTVPreferredFocus,
+  ...props
+}) => {
   const [settings] = useSettings();
 
   const ref = React.useRef<ICarouselInstance>(null);
@@ -103,7 +108,13 @@ export const LargeMovieCarousel: React.FC<Props> = ({ ...props }) => {
         height={204}
         data={popularItems}
         onProgressChange={progress}
-        renderItem={({ item, index }) => <RenderItem key={index} item={item} />}
+        renderItem={({ item, index }) => (
+          <RenderItem
+            key={index}
+            item={item}
+            hasTVPreferredFocus={hasTVPreferredFocus && index === 0}
+          />
+        )}
       />
       <Pagination.Basic
         progress={progress}
@@ -123,7 +134,10 @@ export const LargeMovieCarousel: React.FC<Props> = ({ ...props }) => {
   );
 };
 
-const RenderItem: React.FC<{ item: BaseItemDto }> = ({ item }) => {
+const RenderItem: React.FC<{
+  item: BaseItemDto;
+  hasTVPreferredFocus?: boolean;
+}> = ({ item, hasTVPreferredFocus }) => {
   const [api] = useAtom(apiAtom);
   const router = useRouter();
   const screenWidth = Dimensions.get("screen").width;
@@ -172,6 +186,44 @@ const RenderItem: React.FC<{ item: BaseItemDto }> = ({ item }) => {
 
   if (!uri || !logoUri) return null;
 
+  // TV Platform - use TouchableItemRouter for proper focus handling
+  if (Platform.isTV) {
+    return (
+      <TouchableItemRouter
+        item={item}
+        hasTVPreferredFocus={hasTVPreferredFocus}
+        style={{ paddingHorizontal: 16 }}
+      >
+        <View className='relative flex justify-center rounded-2xl overflow-hidden border border-neutral-800'>
+          <Image
+            source={{
+              uri,
+            }}
+            style={{
+              width: "100%",
+              height: 200,
+              borderRadius: 16,
+              overflow: "hidden",
+            }}
+          />
+          <View className='absolute bottom-0 left-0 w-full h-24 p-4 flex items-center'>
+            <Image
+              source={{
+                uri: logoUri,
+              }}
+              style={{
+                width: "100%",
+                height: "100%",
+                resizeMode: "contain",
+              }}
+            />
+          </View>
+        </View>
+      </TouchableItemRouter>
+    );
+  }
+
+  // Non-TV platforms - use gesture detector
   return (
     <GestureDetector gesture={tap}>
       <Animated.View

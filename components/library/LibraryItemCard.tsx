@@ -10,7 +10,7 @@ import { Image } from "expo-image";
 import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { type TouchableOpacityProps, View } from "react-native";
+import { Platform, type TouchableOpacityProps, View } from "react-native";
 import { Text } from "@/components/common/Text";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { useSettings } from "@/utils/atoms/settings";
@@ -19,6 +19,7 @@ import { TouchableItemRouter } from "../common/TouchableItemRouter";
 
 interface Props extends TouchableOpacityProps {
   library: BaseItemDto;
+  hasTVPreferredFocus?: boolean;
 }
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -38,7 +39,11 @@ const icons: Record<CollectionType, IconName> = {
   trailers: "videocam",
   unknown: "help-circle",
 } as const;
-export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
+export const LibraryItemCard: React.FC<Props> = ({
+  library,
+  hasTVPreferredFocus,
+  ...props
+}) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const [settings] = useSettings();
@@ -102,7 +107,11 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
 
   if (settings?.libraryOptions?.display === "row") {
     return (
-      <TouchableItemRouter item={library} className='w-full px-4'>
+      <TouchableItemRouter
+        item={library}
+        className='w-full px-4'
+        hasTVPreferredFocus={hasTVPreferredFocus}
+      >
         <View className='flex flex-row items-center w-full relative '>
           <Ionicons
             name={icons[library.CollectionType!] || "folder"}
@@ -122,10 +131,14 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
     );
   }
 
-  if (settings?.libraryOptions?.imageStyle === "cover") {
+  if (settings?.libraryOptions?.imageStyle === "cover" || Platform.isTV) {
     return (
-      <TouchableItemRouter item={library} className='w-full'>
-        <View className='flex justify-center rounded-xl w-full relative border border-neutral-900 h-20 '>
+      <TouchableItemRouter
+        item={library}
+        className='w-full'
+        hasTVPreferredFocus={hasTVPreferredFocus}
+      >
+        <View className='flex justify-center rounded-xl w-full relative border border-neutral-900 h-20'>
           <View
             style={{
               width: "100%",
@@ -152,7 +165,9 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.3)", // Adjust the alpha value (0.3) to control darkness
+                backgroundColor: Platform.isTV
+                  ? "rgba(0, 0, 0, 0.1)"
+                  : "rgba(0, 0, 0, 0.3)",
               }}
             />
           </View>
@@ -162,7 +177,7 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
             </Text>
           )}
           {settings?.libraryOptions?.showStats && (
-            <Text className='font-bold text-xs  text-start px-4'>
+            <Text className='font-bold text-xs text-start px-4'>
               {itemsCount} {itemTypeName}
             </Text>
           )}
@@ -172,7 +187,11 @@ export const LibraryItemCard: React.FC<Props> = ({ library, ...props }) => {
   }
 
   return (
-    <TouchableItemRouter item={library} {...props}>
+    <TouchableItemRouter
+      item={library}
+      hasTVPreferredFocus={hasTVPreferredFocus}
+      {...props}
+    >
       <View className='flex flex-row items-center justify-between rounded-xl w-full relative border bg-neutral-900 border-neutral-900 h-20'>
         <View className='flex flex-col'>
           <Text className='font-bold text-lg text-start px-4'>

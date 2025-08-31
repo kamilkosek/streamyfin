@@ -466,7 +466,7 @@ export const HomeIndex = () => {
       }}
     >
       <View className='flex flex-col space-y-4'>
-        <LargeMovieCarousel />
+        <LargeMovieCarousel hasTVPreferredFocus={Platform.isTV} />
 
         {sections.map((section, index) => {
           if (section.type === "ScrollingCollectionList") {

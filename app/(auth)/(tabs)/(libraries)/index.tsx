@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
 import { Loader } from "@/components/Loader";
@@ -91,7 +91,14 @@ export default function index() {
         paddingRight: insets.right,
       }}
       data={libraries}
-      renderItem={({ item }) => <LibraryItemCard library={item} />}
+      renderItem={({ item, index }) => (
+        <LibraryItemCard
+          library={item}
+          {...(Platform.isTV && index === 0
+            ? { hasTVPreferredFocus: true }
+            : {})}
+        />
+      )}
       keyExtractor={(item) => item.Id || ""}
       ItemSeparatorComponent={() =>
         settings?.libraryOptions?.display === "row" ? (

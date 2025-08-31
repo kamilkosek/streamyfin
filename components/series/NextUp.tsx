@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import type React from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { Text } from "../common/Text";
@@ -42,25 +42,39 @@ export const NextUp: React.FC<{ seriesId: string }> = ({ seriesId }) => {
     );
 
   return (
-    <View>
+    <View style={{ overflow: "visible" }}>
       <Text className='text-lg font-bold px-4 mb-2'>
         {t("item_card.next_up")}
       </Text>
       <FlashList
-        contentContainerStyle={{ paddingLeft: 16 }}
+        contentContainerStyle={{
+          paddingLeft: 16,
+          ...(Platform.isTV
+            ? { overflow: "visible", paddingTop: 8, paddingBottom: 8 }
+            : {}),
+        }}
         horizontal
         estimatedItemSize={172}
         showsHorizontalScrollIndicator={false}
         data={items}
+        initialScrollIndex={0}
         renderItem={({ item, index }) => (
-          <TouchableItemRouter
-            item={item}
+          <View
             key={index}
-            className='flex flex-col w-44'
+            className='flex flex-col w-44 mr-2'
+            style={Platform.isTV ? { overflow: "visible" } : undefined}
           >
-            <ContinueWatchingPoster item={item} useEpisodePoster />
-            <ItemCardText item={item} />
-          </TouchableItemRouter>
+            <TouchableItemRouter
+              item={item}
+              style={{ overflow: "visible" }}
+              {...(Platform.isTV && index === 0
+                ? { hasTVPreferredFocus: true }
+                : {})}
+            >
+              <ContinueWatchingPoster item={item} useEpisodePoster />
+              <ItemCardText item={item} />
+            </TouchableItemRouter>
+          </View>
         )}
       />
     </View>
