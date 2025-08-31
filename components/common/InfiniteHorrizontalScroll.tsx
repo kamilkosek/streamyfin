@@ -7,7 +7,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { t } from "i18next";
 import { useAtom } from "jotai";
 import React, { useEffect, useMemo } from "react";
-import { View, type ViewStyle } from "react-native";
+import { Platform, View, type ViewStyle } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -131,7 +131,10 @@ export function InfiniteHorizontalScroll({
           paddingHorizontal: 16,
           ...contentContainerStyle,
         }}
-        showsHorizontalScrollIndicator={false}
+        showsHorizontalScrollIndicator={!Platform.isTV}
+        // TV-specific optimizations
+        directionalLockEnabled={Platform.isTV}
+        keyboardShouldPersistTaps={Platform.isTV ? "always" : "never"}
         ListEmptyComponent={
           <View className='flex-1 justify-center items-center'>
             <Text className='text-center text-gray-500'>
