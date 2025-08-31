@@ -253,6 +253,7 @@ export const ItemContent: React.FC<ItemContentProps> = React.memo(
                 selectedOptions={selectedOptions}
                 item={item}
                 isOffline={isOffline}
+                hasTVPreferredFocus={Platform.isTV}
               />
             </View>
 

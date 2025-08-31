@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { View, type ViewProps } from "react-native";
+import { TVFocusableItem } from "@/components/common/TVFocusableItem";
 import { MediaStatus } from "@/utils/jellyseerr/server/constants/media";
 
 interface Props {
@@ -62,14 +63,14 @@ const JellyseerrStatusIcon: React.FC<Props & ViewProps> = ({
 
   return (
     badgeIcon && (
-      <TouchableOpacity onPress={onPress} disabled={onPress === undefined}>
+      <TVFocusableItem onPress={onPress} disabled={onPress === undefined}>
         <View
           className={`${badgeStyle ?? "bg-purple-600"} rounded-full h-6 w-6 flex items-center justify-center ${props.className}`}
           {...props}
         >
           <MaterialCommunityIcons name={badgeIcon} size={18} color='white' />
         </View>
-      </TouchableOpacity>
+      </TVFocusableItem>
     )
   );
 };

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import type React from "react";
 import { useTranslation } from "react-i18next";
-import { View, type ViewProps } from "react-native";
+import { Platform, View, type ViewProps } from "react-native";
 import { HorizontalScroll } from "@/components/common/HorrizontalScroll";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
@@ -75,7 +75,10 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
   if (items?.length === 0) return null;
 
   return (
-    <View {...props}>
+    <View
+      {...props}
+      style={Platform.isTV ? { overflow: "visible" } : undefined}
+    >
       <Text className='text-lg font-bold mb-2 px-4'>
         {t("item_card.more_with", { name: actor?.Name })}
       </Text>
@@ -95,6 +98,10 @@ export const MoreMoviesWithActor: React.FC<Props> = ({
             </View>
           </TouchableItemRouter>
         )}
+        containerStyle={Platform.isTV ? { overflow: "visible" } : undefined}
+        contentContainerStyle={
+          Platform.isTV ? { overflow: "visible" } : undefined
+        }
       />
     </View>
   );

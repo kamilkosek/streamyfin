@@ -1,13 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { useCallback, useMemo } from "react";
-import {
-  Alert,
-  Linking,
-  TouchableOpacity,
-  View,
-  type ViewProps,
-} from "react-native";
+import { Alert, Linking, View, type ViewProps } from "react-native";
+import { TVFocusableItem } from "@/components/common/TVFocusableItem";
 import type { MovieDetails } from "@/utils/jellyseerr/server/models/Movie";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
 
@@ -44,9 +39,9 @@ export const ItemActions = ({ item, ...props }: Props) => {
   return (
     <View className='' {...props}>
       {trailerLink && (
-        <TouchableOpacity onPress={openTrailer}>
+        <TVFocusableItem onPress={openTrailer}>
           <Ionicons name='film-outline' size={24} color='white' />
-        </TouchableOpacity>
+        </TVFocusableItem>
       )}
     </View>
   );

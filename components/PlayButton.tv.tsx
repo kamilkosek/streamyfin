@@ -14,6 +14,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { Colors } from "@/constants/Colors";
 import { useHaptic } from "@/hooks/useHaptic";
 import { itemThemeColorAtom } from "@/utils/atoms/primaryColor";
 import { useSettings } from "@/utils/atoms/settings";
@@ -189,7 +190,7 @@ export const PlayButton: React.FC<Props> = ({
       <View
         style={{
           borderWidth: 1,
-          borderColor: colorAtom.primary,
+          borderColor: Colors.primary,
           borderStyle: "solid",
         }}
         className='flex flex-row items-center justify-center bg-transparent rounded-xl z-20 h-12 w-full '

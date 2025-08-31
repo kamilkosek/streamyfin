@@ -4,20 +4,18 @@ import type {
   BaseItemPerson,
 } from "@jellyfin/sdk/lib/generated-client/models";
 import { useRouter, useSegments } from "expo-router";
-import { type PropsWithChildren, useCallback, useState } from "react";
+import { type PropsWithChildren, useCallback } from "react";
 import {
   Platform,
   Pressable,
   TouchableOpacity,
   type TouchableOpacityProps,
+  View,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
+import { useTVFocusAnimation } from "@/hooks/useTVFocusAnimation";
 
 interface Props extends TouchableOpacityProps {
   item: BaseItemDto;
@@ -73,8 +71,8 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   const { isFavorite, toggleFavorite } = useFavorite(item);
 
   // TV animation values
-  const scale = useSharedValue(1);
-  const [isFocused, setIsFocused] = useState(false);
+  const { animatedStyle, shadowStyle, handleFocus, handleBlur } =
+    useTVFocusAnimation();
 
   const from = segments[2];
 
@@ -112,44 +110,6 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
     );
   }, [showActionSheetWithOptions, isFavorite, markAsPlayedStatus]);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-      shadowColor: "#000",
-      shadowOpacity: isFocused ? 0.4 : 0,
-      shadowRadius: isFocused ? 15 : 0,
-      elevation: isFocused ? 12 : 0,
-      zIndex: isFocused ? 999 : 1,
-    };
-  });
-
-  const shadowStyle = {
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-  };
-
-  const handleFocus = useCallback(() => {
-    if (Platform.isTV) {
-      setIsFocused(true);
-      scale.value = withSpring(1.16, {
-        damping: 15,
-        stiffness: 300,
-      });
-    }
-  }, [scale]);
-
-  const handleBlur = useCallback(() => {
-    if (Platform.isTV) {
-      setIsFocused(false);
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 300,
-      });
-    }
-  }, [scale]);
-
   const handlePress = useCallback(() => {
     if (!from) return;
     let url = itemRouter(item, from);
@@ -160,42 +120,35 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
     router.push(url);
   }, [item, from, isOffline, router]);
 
-  if (
-    from === "(home)" ||
-    from === "(search)" ||
-    from === "(libraries)" ||
-    from === "(favorites)"
-  ) {
-    // TV Platform - use Pressable with elevation animation
-    if (Platform.isTV) {
-      return (
+  // TV Platform - use Pressable with elevation animation
+  if (Platform.isTV) {
+    return (
+      <View style={{ overflow: "visible" }}>
         <Pressable
           onPress={handlePress}
           onLongPress={showActionSheet}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          style={style}
+          style={[style, { overflow: "visible" }]}
           {...props}
         >
           <Animated.View style={[animatedStyle, shadowStyle]}>
             {children}
           </Animated.View>
         </Pressable>
-      );
-    }
-
-    // Non-TV platforms - use regular TouchableOpacity
-    return (
-      <TouchableOpacity
-        onLongPress={showActionSheet}
-        onPress={handlePress}
-        style={style}
-        {...props}
-      >
-        {children}
-      </TouchableOpacity>
+      </View>
     );
   }
 
-  return null;
+  // Non-TV platforms - use regular TouchableOpacity
+  return (
+    <TouchableOpacity
+      onLongPress={showActionSheet}
+      onPress={handlePress}
+      style={style}
+      {...props}
+    >
+      {children}
+    </TouchableOpacity>
+  );
 };

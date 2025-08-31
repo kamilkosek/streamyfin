@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { View, type ViewProps } from "react-native";
+import { Platform, View, type ViewProps } from "react-native";
 import MoviePoster from "@/components/posters/MoviePoster";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { HorizontalScroll } from "./common/HorrizontalScroll";
@@ -46,7 +46,10 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
   );
 
   return (
-    <View {...props}>
+    <View
+      {...props}
+      style={Platform.isTV ? { overflow: "visible" } : undefined}
+    >
       <Text className='px-4 text-lg font-bold mb-2'>
         {t("item_card.similar_items")}
       </Text>
@@ -67,6 +70,10 @@ export const SimilarItems: React.FC<SimilarItemsProps> = ({
             </View>
           </TouchableItemRouter>
         )}
+        containerStyle={Platform.isTV ? { overflow: "visible" } : undefined}
+        contentContainerStyle={
+          Platform.isTV ? { overflow: "visible" } : undefined
+        }
       />
     </View>
   );

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useAtom } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
-import { TouchableOpacity, type ViewProps } from "react-native";
+import { type ViewProps } from "react-native";
 import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
@@ -13,7 +13,31 @@ import {
   HorizontalScroll,
   type HorizontalScrollRef,
 } from "../common/HorrizontalScroll";
+import { TVFocusableItem } from "../common/TVFocusableItem";
 import { ItemCardText } from "../ItemCardText";
+
+// Episode item component with TV elevation effect
+interface EpisodeCarouselItemProps {
+  item: BaseItemDto;
+  isActive: boolean;
+  onPress: () => void;
+}
+
+const EpisodeCarouselItem: React.FC<EpisodeCarouselItemProps> = ({
+  item,
+  isActive,
+  onPress,
+}) => {
+  return (
+    <TVFocusableItem
+      onPress={onPress}
+      className={`flex flex-col w-44 ${!isActive ? "opacity-50" : ""}`}
+    >
+      <ContinueWatchingPoster item={item} useEpisodePoster />
+      <ItemCardText item={item} />
+    </TVFocusableItem>
+  );
+};
 
 interface Props extends ViewProps {
   item?: BaseItemDto | null;
@@ -134,18 +158,12 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
       extraData={item}
       loading={loading || isLoading || isFetching}
       renderItem={(_item, _idx) => (
-        <TouchableOpacity
+        <EpisodeCarouselItem
           key={_item.Id}
-          onPress={() => {
-            router.setParams({ id: _item.Id });
-          }}
-          className={`flex flex-col w-44 
-                  ${item?.Id === _item.Id ? "" : "opacity-50"}
-                `}
-        >
-          <ContinueWatchingPoster item={_item} useEpisodePoster />
-          <ItemCardText item={_item} />
-        </TouchableOpacity>
+          item={_item}
+          isActive={item?.Id === _item.Id}
+          onPress={() => router.setParams({ id: _item.Id })}
+        />
       )}
       {...props}
     />

@@ -3,6 +3,7 @@ import type { FC } from "react";
 import { Platform, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
+import { TVFocusableItem } from "@/components/common/TVFocusableItem";
 import { Loader } from "@/components/Loader";
 import { useSettings } from "@/utils/atoms/settings";
 import AudioSlider from "./AudioSlider";
@@ -93,7 +94,7 @@ export const CenterControls: FC<CenterControlsProps> = ({
       )}
 
       <View style={Platform.isTV ? { flex: 1, alignItems: "center" } : {}}>
-        <TouchableOpacity onPress={togglePlay}>
+        <TVFocusableItem onPress={togglePlay}>
           {!isBuffering ? (
             <Ionicons
               name={isPlaying ? "pause" : "play"}
@@ -103,7 +104,7 @@ export const CenterControls: FC<CenterControlsProps> = ({
           ) : (
             <Loader size={"large"} />
           )}
-        </TouchableOpacity>
+        </TVFocusableItem>
       </View>
 
       {!Platform.isTV && (

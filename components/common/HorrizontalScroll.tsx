@@ -1,6 +1,6 @@
 import { FlashList, type FlashListProps } from "@shopify/flash-list";
 import React, { useImperativeHandle, useRef } from "react";
-import { View, type ViewStyle } from "react-native";
+import { Platform, View, type ViewStyle } from "react-native";
 import { Text } from "./Text";
 
 type PartialExcept<T, K extends keyof T> = Partial<T> & Pick<T, K>;
@@ -58,7 +58,12 @@ export const HorizontalScroll = <T,>(
   }));
 
   const renderFlashListItem = ({ item, index }: { item: T; index: number }) => (
-    <View className='mr-2'>{renderItem(item, index)}</View>
+    <View
+      className='mr-2'
+      style={Platform.isTV ? { overflow: "visible" } : undefined}
+    >
+      {renderItem(item, index)}
+    </View>
   );
 
   if (!data || loading) {
@@ -71,7 +76,13 @@ export const HorizontalScroll = <T,>(
   }
 
   return (
-    <View style={[{ height }, containerStyle]}>
+    <View
+      style={[
+        { height },
+        containerStyle,
+        Platform.isTV ? { overflow: "visible" } : undefined,
+      ]}
+    >
       <FlashList<T>
         ref={flashListRef}
         data={data}
@@ -82,6 +93,7 @@ export const HorizontalScroll = <T,>(
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 16,
+          ...(Platform.isTV ? { overflow: "visible" } : {}),
           ...contentContainerStyle,
         }}
         keyExtractor={keyExtractor}

@@ -19,6 +19,11 @@ export const HeaderBackButton: React.FC<Props> = ({
 }) => {
   const router = useRouter();
 
+  // Don't render on TV platforms since we use hardware back button and this button behaves weirdly with focus
+  if (Platform.isTV) {
+    return null;
+  }
+
   if (background === "transparent" && Platform.OS !== "android")
     return (
       <TouchableOpacity
