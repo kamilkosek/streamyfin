@@ -12,6 +12,11 @@ export default function AdaptiveLayout() {
 
   useFocusEffect(
     useCallback(() => {
+      // Skip intro check for TV platforms
+      if (Platform.isTV) {
+        return;
+      }
+
       const hasShownIntro = storage.getBoolean("hasShownIntro");
       if (!hasShownIntro) {
         const timer = setTimeout(() => {

@@ -24,7 +24,7 @@ export function TVDrawerLayout() {
   const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
-  const [isSidebarFocused, setIsSidebarFocused] = useState(false);
+  const [isSidebarFocused, setIsSidebarFocused] = useState(false); // Start collapsed
   const blurTimeoutRef = useRef<any>(null);
 
   const menuItems: MenuItem[] = [
@@ -63,37 +63,67 @@ export function TVDrawerLayout() {
 
   const isRouteActive = useCallback(
     (route: string) => {
-      return pathname.includes(route.split("/").pop() || "");
+      // More robust route matching for the TV layout
+      const routeSegments = route.split("/").filter(Boolean);
+
+      // Check if the pathname contains the tab name from the route
+      const tabName = routeSegments[routeSegments.length - 1]?.replace(
+        /[()]/g,
+        "",
+      );
+      return tabName && pathname.includes(tabName);
     },
     [pathname],
   );
 
   const handleSidebarFocus = useCallback(() => {
-    // cancel any pending blur collapse and expand immediately
+    // Cancel any pending blur collapse
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
       blurTimeoutRef.current = null;
     }
-    // animate if available
+
+    // Expand the sidebar when a sidebar item receives focus
     try {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     } catch {}
     setIsSidebarFocused(true);
   }, []);
 
-  const handleSidebarBlurWithDelay = useCallback(() => {
-    // small delay so quick focus moves within the sidebar don't collapse it
+  const handleSidebarBlur = useCallback(() => {
+    // Small delay to allow navigation between sidebar items
     if (blurTimeoutRef.current) {
       clearTimeout(blurTimeoutRef.current);
     }
+
     blurTimeoutRef.current = setTimeout(() => {
       try {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       } catch {}
       setIsSidebarFocused(false);
       blurTimeoutRef.current = null;
-    }, 140);
+    }, 100); // Shorter delay for quicker collapse
   }, []);
+
+  const handleSidebarPress = useCallback(
+    (route: string) => {
+      // Navigate to the route
+      navigateToRoute(route);
+
+      // Force collapse the sidebar immediately after navigation
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
+
+      // Immediate collapse after press
+      try {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      } catch {}
+      setIsSidebarFocused(false);
+    },
+    [navigateToRoute],
+  );
 
   useEffect(() => {
     // Enable LayoutAnimation on Android when available
@@ -110,6 +140,28 @@ export function TVDrawerLayout() {
       }
     };
   }, []);
+
+  // Navigate to home screen on initial load for TV
+  useEffect(() => {
+    if (Platform.isTV) {
+      // Check if we're at the root tabs route
+      const isAtRootTabs =
+        !pathname ||
+        pathname === "/" ||
+        pathname === "/(auth)/(tabs)" ||
+        pathname === "/(auth)/(tabs)/" ||
+        pathname.endsWith("/(tabs)");
+
+      if (isAtRootTabs) {
+        // Use a small delay to ensure the layout is ready
+        const timer = setTimeout(() => {
+          router.replace("/(auth)/(tabs)/(home)");
+        }, 50);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [pathname, router]);
 
   // Only show this layout on TV platforms
   if (!Platform.isTV) {
@@ -149,7 +201,7 @@ export function TVDrawerLayout() {
               !isSidebarFocused && styles.collapsedMenuContainer,
             ]}
           >
-            {menuItems.map((item, index) => {
+            {menuItems.map((item) => {
               const isActive = isRouteActive(item.route);
 
               return (
@@ -160,12 +212,11 @@ export function TVDrawerLayout() {
                     isActive && styles.sidebarMenuItemActive,
                     !isSidebarFocused && styles.collapsedMenuItemOverride,
                   ]}
-                  onPress={() => navigateToRoute(item.route)}
+                  onPress={() => handleSidebarPress(item.route)}
                   onFocus={handleSidebarFocus}
-                  onBlur={handleSidebarBlurWithDelay}
+                  onBlur={handleSidebarBlur}
                   accessibilityLabel={t(item.titleKey)}
                   accessibilityRole='button'
-                  hasTVPreferredFocus={index === 0 && pathname === "/"}
                 >
                   <MaterialIcons
                     name={item.icon}
