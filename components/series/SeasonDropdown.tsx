@@ -1,11 +1,16 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
+import { Image } from "expo-image";
 import { useEffect, useMemo } from "react";
-import { Platform, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, TouchableOpacity, View } from "react-native";
 
 const DropdownMenu = !Platform.isTV ? require("zeego/dropdown-menu") : null;
 
 import { t } from "i18next";
+import { useAtom } from "jotai";
+import { apiAtom } from "@/providers/JellyfinProvider";
+import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { Text } from "../common/Text";
+import { TVFocusableItem } from "../common/TVFocusableItem";
 
 type Props = {
   item: BaseItemDto;
@@ -33,6 +38,7 @@ export const SeasonDropdown: React.FC<Props> = ({
   onSelect,
 }) => {
   const isTv = Platform.isTV;
+  const [api] = useAtom(apiAtom);
 
   const keys = useMemo<SeasonKeys>(
     () =>
@@ -56,7 +62,6 @@ export const SeasonDropdown: React.FC<Props> = ({
   );
 
   useEffect(() => {
-    if (isTv) return;
     if (seasons && seasons.length > 0 && seasonIndex === undefined) {
       let initialIndex: number | undefined;
 
@@ -86,21 +91,103 @@ export const SeasonDropdown: React.FC<Props> = ({
         else throw Error("Initial index could not be found!");
       }
     }
-  }, [
-    isTv,
-    seasons,
-    seasonIndex,
-    item,
-    item[keys.id],
-    initialSeasonIndex,
-    keys,
-  ]);
+  }, [seasons, seasonIndex, item, item[keys.id], initialSeasonIndex, keys]);
 
   const sortByIndex = (a: BaseItemDto, b: BaseItemDto) =>
     Number(a[keys.index]) - Number(b[keys.index]);
 
-  if (isTv) return null;
+  // TV Season Picker - Horizontal scroll with season posters
+  if (isTv) {
+    if (!seasons || seasons.length <= 1) return null;
 
+    return (
+      <View className='mb-4' style={{ marginLeft: Platform.isTV ? 8 : 0 }}>
+        <Text className='text-lg font-semibold px-4 mb-3 text-white'>
+          {t("item_card.seasons")}
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: Platform.isTV ? 24 : 16, // Extra padding on TV to avoid sidebar overlap
+            paddingVertical: 8,
+          }}
+          className='flex-row'
+        >
+          {seasons?.sort(sortByIndex).map((season: any, index: number) => {
+            const title =
+              season[keys.title] ||
+              season.Name ||
+              `Season ${season.IndexNumber}`;
+            const isSelected =
+              season[keys.index] === seasonIndex || season.Name === seasonIndex;
+            const imageUrl = getPrimaryImageUrl({
+              api,
+              item: season,
+              quality: 90,
+              width: 300,
+            });
+
+            return (
+              <TVFocusableItem
+                key={season.Id || season.IndexNumber || index}
+                onPress={() => onSelect(season)}
+                className={`mr-4 ${isSelected ? "opacity-100" : "opacity-70"}`}
+                style={{
+                  width: 120,
+                  // Ensure proper overflow handling for elevation
+                  overflow: "visible",
+                }}
+              >
+                <View
+                  className={`rounded-lg overflow-hidden border-2 ${
+                    isSelected ? "border-purple-500" : "border-neutral-700"
+                  }`}
+                >
+                  <Image
+                    source={imageUrl ? { uri: imageUrl } : null}
+                    style={{
+                      width: 120,
+                      height: 180,
+                      backgroundColor: "#1f2937",
+                    }}
+                    contentFit='cover'
+                    placeholder={
+                      season.ImageBlurHashes?.Primary &&
+                      Object.values(season.ImageBlurHashes.Primary)[0]
+                        ? {
+                            blurhash: Object.values(
+                              season.ImageBlurHashes.Primary,
+                            )[0] as string,
+                          }
+                        : null
+                    }
+                  />
+                  {!imageUrl && (
+                    <View className='absolute inset-0 bg-neutral-800 flex items-center justify-center'>
+                      <Text className='text-neutral-400 text-xs text-center px-2'>
+                        {title}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text
+                  className={`text-center mt-2 text-sm ${
+                    isSelected ? "text-white font-semibold" : "text-neutral-400"
+                  }`}
+                  numberOfLines={2}
+                >
+                  {title}
+                </Text>
+              </TVFocusableItem>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Mobile/Desktop dropdown (existing implementation)
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>

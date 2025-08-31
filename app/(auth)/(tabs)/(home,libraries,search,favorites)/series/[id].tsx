@@ -147,7 +147,10 @@ const page: React.FC = () => {
         ) : undefined
       }
     >
-      <View className='flex flex-col pt-4'>
+      <View
+        className='flex flex-col pt-4'
+        style={{ overflow: Platform.isTV ? "visible" : "hidden" }}
+      >
         <SeriesHeader item={item} />
         <View className='mb-4'>
           <NextUp seriesId={seriesId} />

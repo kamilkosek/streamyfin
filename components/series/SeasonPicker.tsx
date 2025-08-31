@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { atom, useAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import {
   SeasonDropdown,
   type SeasonIndexState,
@@ -15,10 +15,10 @@ import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import { runtimeTicksToSeconds } from "@/utils/time";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
 import { Text } from "../common/Text";
-import { TouchableItemRouter } from "../common/TouchableItemRouter";
 import { DownloadItems, DownloadSingleItem } from "../DownloadItem";
 import { Loader } from "../Loader";
 import { PlayedStatus } from "../PlayedStatus";
+import { EpisodeItem } from "./EpisodeItem";
 
 type Props = {
   item: BaseItemDto;
@@ -135,40 +135,63 @@ export const SeasonPicker: React.FC<Props> = ({ item }) => {
   return (
     <View
       style={{
-        minHeight: 144 * nrOfEpisodes,
+        minHeight: Platform.isTV ? 400 : 144 * nrOfEpisodes,
       }}
     >
-      <View className='flex flex-row justify-start items-center px-4'>
-        <SeasonDropdown
-          item={item}
-          seasons={seasons}
-          state={seasonIndexState}
-          onSelect={(season) => {
-            if (!item.Id) return;
-            setSeasonIndexState((prev) => ({
-              ...prev,
-              [item.Id!]: season.IndexNumber ?? season.Name,
-            }));
-          }}
-        />
-        {episodes?.length ? (
-          <View className='flex flex-row items-center space-x-2'>
-            <DownloadItems
-              title={t("item_card.download.download_season")}
-              className='ml-2'
-              items={episodes || []}
-              MissingDownloadIconComponent={() => (
-                <Ionicons name='download' size={20} color='white' />
-              )}
-              DownloadedIconComponent={() => (
-                <Ionicons name='download' size={20} color='#9333ea' />
-              )}
-            />
-            <PlayedStatus items={episodes || []} />
-          </View>
-        ) : null}
-      </View>
-      <View className='px-4 flex flex-col mt-4'>
+      {!Platform.isTV && (
+        <View className='flex flex-row justify-start items-center px-4'>
+          <SeasonDropdown
+            item={item}
+            seasons={seasons}
+            state={seasonIndexState}
+            onSelect={(season) => {
+              if (!item.Id) return;
+              setSeasonIndexState((prev) => ({
+                ...prev,
+                [item.Id!]: season.IndexNumber ?? season.Name,
+              }));
+            }}
+          />
+          {episodes?.length ? (
+            <View className='flex flex-row items-center space-x-2'>
+              <DownloadItems
+                title={t("item_card.download.download_season")}
+                className='ml-2'
+                items={episodes || []}
+                MissingDownloadIconComponent={() => (
+                  <Ionicons name='download' size={20} color='white' />
+                )}
+                DownloadedIconComponent={() => (
+                  <Ionicons name='download' size={20} color='#9333ea' />
+                )}
+              />
+              <PlayedStatus items={episodes || []} />
+            </View>
+          ) : null}
+        </View>
+      )}
+
+      {Platform.isTV && (
+        <View style={{ overflow: "visible" }}>
+          <SeasonDropdown
+            item={item}
+            seasons={seasons}
+            state={seasonIndexState}
+            onSelect={(season) => {
+              if (!item.Id) return;
+              setSeasonIndexState((prev) => ({
+                ...prev,
+                [item.Id!]: season.IndexNumber ?? season.Name,
+              }));
+            }}
+          />
+        </View>
+      )}
+
+      <View
+        className='px-4 flex flex-col mt-4'
+        style={{ overflow: Platform.isTV ? "visible" : "hidden" }}
+      >
         {isFetching ? (
           <View
             style={{
@@ -180,11 +203,7 @@ export const SeasonPicker: React.FC<Props> = ({ item }) => {
           </View>
         ) : (
           episodes?.map((e: BaseItemDto) => (
-            <TouchableItemRouter
-              item={e}
-              key={e.Id}
-              className='flex flex-col mb-4'
-            >
+            <EpisodeItem item={e} key={e.Id} className='flex flex-col mb-4'>
               <View className='flex flex-row items-start mb-2'>
                 <View className='mr-2'>
                   <ContinueWatchingPoster
@@ -215,7 +234,7 @@ export const SeasonPicker: React.FC<Props> = ({ item }) => {
               >
                 {e.Overview}
               </Text>
-            </TouchableItemRouter>
+            </EpisodeItem>
           ))
         )}
         {(episodes?.length || 0) === 0 ? (
