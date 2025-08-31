@@ -5,7 +5,7 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View, type ViewProps } from "react-native";
+import { Platform, ScrollView, View, type ViewProps } from "react-native";
 import { Text } from "@/components/common/Text";
 import MoviePoster from "@/components/posters/MoviePoster";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
@@ -86,14 +86,22 @@ export const ScrollingCollectionList: React.FC<Props> = ({
           ))}
         </View>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className='px-4 flex flex-row'>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={Platform.isTV ? { overflow: "visible" } : undefined}
+        >
+          <View
+            className={`flex flex-row ${Platform.isTV ? "px-4 py-4" : "px-4"}`}
+            style={Platform.isTV ? { overflow: "visible" } : undefined}
+          >
             {data?.map((item) => (
               <TouchableItemRouter
                 item={item}
                 key={item.Id}
                 isOffline={isOffline}
-                className={`mr-2 
+                className={`
+                  ${Platform.isTV ? "mx-3" : "mr-2"}
                   ${orientation === "horizontal" ? "w-44" : "w-28"}
                 `}
               >
