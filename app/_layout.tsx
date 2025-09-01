@@ -66,6 +66,7 @@ import type {
 import type { ExpoPushToken } from "expo-notifications/build/Tokens.types";
 import { useAtom } from "jotai";
 import { Toaster } from "sonner-native";
+import { TVActionSheetProvider } from "@/components/tv";
 import { userAtom } from "@/providers/JellyfinProvider";
 import { store } from "@/utils/store";
 
@@ -202,9 +203,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <JotaiProvider>
         <ActionSheetProvider>
-          <I18nextProvider i18n={i18n}>
-            <Layout />
-          </I18nextProvider>
+          <TVActionSheetProvider>
+            <I18nextProvider i18n={i18n}>
+              <Layout />
+            </I18nextProvider>
+          </TVActionSheetProvider>
         </ActionSheetProvider>
       </JotaiProvider>
     </GestureHandlerRootView>
