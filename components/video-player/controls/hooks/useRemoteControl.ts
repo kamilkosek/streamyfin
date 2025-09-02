@@ -111,6 +111,10 @@ export function useRemoteControl({
         }
         break;
       }
+      case "playPause": {
+        togglePlay();
+        break;
+      }
       case "down":
       case "up":
         // cancel scrubbing on other directions
@@ -122,7 +126,10 @@ export function useRemoteControl({
         break;
     }
 
-    if (!showControls) toggleControls();
+    // Always try to show controls if they're not shown
+    if (!showControls) {
+      toggleControls();
+    }
   });
 
   useEffect(() => {

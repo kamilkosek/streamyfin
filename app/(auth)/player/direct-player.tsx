@@ -40,7 +40,7 @@ import { writeToLog } from "@/utils/log";
 import { generateDeviceProfile } from "@/utils/profiles/native";
 import { msToTicks, ticksToSeconds } from "@/utils/time";
 
-export default function page() {
+export default function DirectPlayer() {
   const videoRef = useRef<VlcPlayerViewRef>(null);
   const user = useAtomValue(userAtom);
   const api = useAtomValue(apiAtom);
@@ -658,6 +658,9 @@ export default function page() {
         height: "100%",
         width: "100%",
       }}
+      focusable={true}
+      isTVSelectable={true}
+      hasTVPreferredFocus={true}
     >
       <View
         style={{
@@ -668,6 +671,8 @@ export default function page() {
           flexDirection: "column",
           justifyContent: "center",
         }}
+        focusable={true}
+        isTVSelectable={true}
       >
         <VlcPlayerView
           ref={videoRef}
