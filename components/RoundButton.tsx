@@ -1,11 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import type { PropsWithChildren } from "react";
-import { Platform, type TouchableOpacityProps } from "react-native";
+import { Platform, type ViewProps } from "react-native";
 import { FocusableItem } from "@/components/common/FocusableItem";
 import { useHaptic } from "@/hooks/useHaptic";
 
-interface Props extends TouchableOpacityProps {
+interface Props extends ViewProps {
   onPress?: () => void;
   icon?: keyof typeof Ionicons.glyphMap;
   background?: boolean;

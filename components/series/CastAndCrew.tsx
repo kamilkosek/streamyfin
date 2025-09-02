@@ -68,7 +68,7 @@ export const CastAndCrew: React.FC<Props> = ({ item, loading, ...props }) => {
       </Text>
       <HorizontalScroll
         loading={loading}
-        keyExtractor={(i, _idx) => i.Id?.toString() || `cast-${_idx}`}
+        keyExtractor={(i, _idx) => i.Id?.toString() || ""}
         height={247}
         data={destinctPeople}
         renderItem={(i) => (
