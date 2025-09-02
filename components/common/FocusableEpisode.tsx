@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
-interface TVFocusableEpisodeProps extends PropsWithChildren {
+interface FocusableEpisodeProps extends PropsWithChildren {
   onPress?: () => void;
   onLongPress?: () => void;
   className?: string;
@@ -19,7 +19,7 @@ interface TVFocusableEpisodeProps extends PropsWithChildren {
  * TV-specific focusable component for episodes that uses background highlighting
  * instead of elevation to maintain text readability
  */
-export const TVFocusableEpisode: React.FC<TVFocusableEpisodeProps> = ({
+export const FocusableEpisode: React.FC<FocusableEpisodeProps> = ({
   onPress,
   onLongPress,
   className,

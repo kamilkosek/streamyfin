@@ -5,8 +5,8 @@ import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
+import { FocusableEpisode } from "../common/FocusableEpisode";
 import { itemRouter, TouchableItemRouter } from "../common/TouchableItemRouter";
-import { TVFocusableEpisode } from "../common/TVFocusableEpisode";
 
 interface Props {
   item: BaseItemDto;
@@ -79,13 +79,13 @@ export const EpisodeItem: React.FC<Props> = ({
   // On TV, use our custom episode component with background highlighting
   if (Platform.isTV) {
     return (
-      <TVFocusableEpisode
+      <FocusableEpisode
         onPress={handlePress}
         onLongPress={showActionSheet}
         className={className}
       >
         {children}
-      </TVFocusableEpisode>
+      </FocusableEpisode>
     );
   }
 
