@@ -9,12 +9,12 @@ interface TVKeyLoggerOptions {
 }
 
 /**
- * Global TV key press logger - only active on TV platforms
+ * Global TV key press logger - only active on TV platforms when debugging
  * Logs all key presses to console for debugging purposes
  * Detects when user reaches leftmost navigation boundary
  */
 export const useTVKeyLogger = ({
-  enabled = true,
+  enabled = __DEV__,
   onLeftmostDetected,
 }: TVKeyLoggerOptions = {}) => {
   const lastLeftEventRef = useRef<{ tag: number; timestamp: number } | null>(

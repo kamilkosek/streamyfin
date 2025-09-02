@@ -1,5 +1,4 @@
 import "@/augmentations";
-import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Platform } from "react-native";
 import { useTVKeyLogger } from "@/hooks/useTVKeyLogger";
@@ -34,28 +33,25 @@ const BackGroundDownloader = !Platform.isTV
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const BackgroundFetch = !Platform.isTV
-  ? require("expo-background-fetch")
-  : null;
+import * as BackgroundTask from "expo-background-task";
 
 import * as Device from "expo-device";
 import * as FileSystem from "expo-file-system";
 
 const Notifications = !Platform.isTV ? require("expo-notifications") : null;
 
+import { getLocales } from "expo-localization";
 import { router, Stack, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 
-const TaskManager = !Platform.isTV ? require("expo-task-manager") : null;
-
-import { getLocales } from "expo-localization";
+import * as TaskManager from "expo-task-manager";
 import { Provider as JotaiProvider } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Appearance, AppState } from "react-native";
 import { SystemBars } from "react-native-edge-to-edge";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as ScreenOrientation from "@/packages/expo-screen-orientation";
 import "react-native-reanimated";
 import { getSessionApi } from "@jellyfin/sdk/lib/utils/api/session-api";
 import type { EventSubscription } from "expo-modules-core";
@@ -66,7 +62,7 @@ import type {
 import type { ExpoPushToken } from "expo-notifications/build/Tokens.types";
 import { useAtom } from "jotai";
 import { Toaster } from "sonner-native";
-import { TVActionSheetProvider } from "@/components/tv";
+import { ActionSheetProvider } from "@/components/actionsheet";
 import { userAtom } from "@/providers/JellyfinProvider";
 import { store } from "@/utils/store";
 
@@ -138,7 +134,7 @@ if (!Platform.isTV) {
     const result = response.data.filter((s) => s.NowPlayingItem);
     Notifications.setBadgeCountAsync(result.length);
 
-    return BackgroundFetch.BackgroundFetchResult.NewData;
+    return BackgroundTask.BackgroundTaskResult.Success;
   });
 
   TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
@@ -146,22 +142,22 @@ if (!Platform.isTV) {
 
     const settingsData = storage.getString("settings");
 
-    if (!settingsData) return BackgroundFetch.BackgroundFetchResult.NoData;
+    if (!settingsData) return BackgroundTask.BackgroundTaskResult.Failed;
 
     const settings: Partial<Settings> = JSON.parse(settingsData);
 
     if (!settings?.autoDownload)
-      return BackgroundFetch.BackgroundFetchResult.NoData;
+      return BackgroundTask.BackgroundTaskResult.Failed;
 
     const token = getTokenFromStorage();
     const deviceId = getOrSetDeviceId();
     const baseDirectory = FileSystem.documentDirectory;
 
     if (!token || !deviceId || !baseDirectory)
-      return BackgroundFetch.BackgroundFetchResult.NoData;
+      return BackgroundTask.BackgroundTaskResult.Failed;
 
     // Be sure to return the successful result type!
-    return BackgroundFetch.BackgroundFetchResult.NewData;
+    return BackgroundTask.BackgroundTaskResult.Success;
   });
 }
 
@@ -170,22 +166,31 @@ const checkAndRequestPermissions = async () => {
     const hasAskedBefore = storage.getString(
       "hasAskedForNotificationPermission",
     );
-
+    let granted = false;
     if (hasAskedBefore !== "true") {
       const { status } = await Notifications.requestPermissionsAsync();
-
-      if (status === "granted") {
+      granted = status === "granted";
+      if (granted) {
         writeToLog("INFO", "Notification permissions granted.");
         console.log("Notification permissions granted.");
       } else {
         writeToLog("ERROR", "Notification permissions denied.");
         console.log("Notification permissions denied.");
       }
-
       storage.set("hasAskedForNotificationPermission", "true");
     } else {
-      console.log("Already asked for notification permissions before.");
+      // Already asked before, check current status
+      const { status } = await Notifications.getPermissionsAsync();
+      granted = status === "granted";
+      if (!granted) {
+        writeToLog(
+          "ERROR",
+          "Notification permissions denied (already asked before).",
+        );
+        console.log("Notification permissions denied (already asked before).");
+      }
     }
+    return granted;
   } catch (error) {
     writeToLog(
       "ERROR",
@@ -193,6 +198,7 @@ const checkAndRequestPermissions = async () => {
       error,
     );
     console.error("Error checking/requesting notification permissions:", error);
+    return false;
   }
 };
 
@@ -203,11 +209,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <JotaiProvider>
         <ActionSheetProvider>
-          <TVActionSheetProvider>
-            <I18nextProvider i18n={i18n}>
-              <Layout />
-            </I18nextProvider>
-          </TVActionSheetProvider>
+          <I18nextProvider i18n={i18n}>
+            <Layout />
+          </I18nextProvider>
         </ActionSheetProvider>
       </JotaiProvider>
     </GestureHandlerRootView>
@@ -227,7 +231,7 @@ const queryClient = new QueryClient({
 });
 
 function Layout() {
-  const [settings] = useSettings();
+  const [settings] = useSettings(null);
   const [user] = useAtom(userAtom);
   const [api] = useAtom(apiAtom);
   const appState = useRef(AppState.currentState);
@@ -254,8 +258,8 @@ function Layout() {
   useNotificationObserver();
 
   const [expoPushToken, setExpoPushToken] = useState<ExpoPushToken>();
-  const notificationListener = useRef<EventSubscription>();
-  const responseListener = useRef<EventSubscription>();
+  const notificationListener = useRef<EventSubscription>(null);
+  const responseListener = useRef<EventSubscription>(null);
 
   useEffect(() => {
     if (!Platform.isTV && expoPushToken && api && user) {
@@ -280,7 +284,13 @@ function Layout() {
       });
     }
 
-    await checkAndRequestPermissions();
+    const granted = await checkAndRequestPermissions();
+    if (!granted) {
+      console.log(
+        "Notification permissions not granted, skipping background fetch and push token registration.",
+      );
+      return;
+    }
 
     if (!Platform.isTV && user && user.Policy?.IsAdministrator) {
       await registerBackgroundFetchAsyncSessions();
@@ -296,7 +306,7 @@ function Layout() {
 
   useEffect(() => {
     if (!Platform.isTV) {
-      registerNotifications();
+      void registerNotifications();
 
       notificationListener.current =
         Notifications?.addNotificationReceivedListener(
@@ -318,7 +328,7 @@ function Layout() {
               response.notification.request.content,
             );
             if (data && Object.keys(data).length > 0) {
-              const type = data?.type?.toLower?.();
+              const type = (data?.type ?? "").toString().toLowerCase();
               const itemId = data?.id;
 
               switch (type) {
@@ -348,14 +358,8 @@ function Layout() {
         );
 
       return () => {
-        notificationListener.current &&
-          Notifications?.removeNotificationSubscription(
-            notificationListener.current,
-          );
-        responseListener.current &&
-          Notifications?.removeNotificationSubscription(
-            responseListener.current,
-          );
+        notificationListener.current?.remove();
+        responseListener.current?.remove();
       };
     }
   }, [user, api]);

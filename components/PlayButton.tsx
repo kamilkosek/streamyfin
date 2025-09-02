@@ -1,4 +1,3 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { useRouter } from "expo-router";
@@ -32,6 +31,7 @@ import { getStreamUrl } from "@/utils/jellyfin/media/getStreamUrl";
 import { chromecast } from "@/utils/profiles/chromecast";
 import { chromecasth265 } from "@/utils/profiles/chromecasth265";
 import { runtimeTicksToMinutes } from "@/utils/time";
+import { useActionSheet } from "./actionsheet";
 import type { Button } from "./Button";
 import type { SelectedOptions } from "./ItemContent";
 
@@ -50,7 +50,7 @@ export const PlayButton: React.FC<Props> = ({
   isOffline,
   ...props
 }: Props) => {
-  const { showActionSheetWithOptions } = useActionSheet();
+  const { showActionSheet } = useActionSheet();
   const client = useRemoteMediaClient();
   const mediaStatus = useMediaStatus();
   const { t } = useTranslation();
@@ -67,7 +67,7 @@ export const PlayButton: React.FC<Props> = ({
   const startColor = useSharedValue(colorAtom);
   const widthProgress = useSharedValue(0);
   const colorChangeProgress = useSharedValue(0);
-  const [settings, updateSettings] = useSettings();
+  const [settings, updateSettings] = useSettings(null);
   const lightHapticFeedback = useHaptic("light");
 
   const goToPlayer = useCallback(
@@ -103,27 +103,52 @@ export const PlayButton: React.FC<Props> = ({
       return;
     }
 
-    const options = ["Chromecast", "Device", "Cancel"];
-    const cancelButtonIndex = 2;
-    showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex,
-      },
-      async (selectedIndex: number | undefined) => {
-        if (!api) return;
-        const currentTitle = mediaStatus?.mediaInfo?.metadata?.title;
-        const isOpeningCurrentlyPlayingMedia =
-          currentTitle && currentTitle === item?.Name;
+    showActionSheet({
+      title: "Select Playback Method",
+      message: "Choose where to play the media",
+      options: [
+        {
+          title: "Chromecast",
+          onPress: async () => {
+            if (!api) return;
+            const currentTitle = mediaStatus?.mediaInfo?.metadata?.title;
+            const isOpeningCurrentlyPlayingMedia =
+              currentTitle && currentTitle === item?.Name;
 
-        switch (selectedIndex) {
-          case 0:
             await CastContext.getPlayServicesState().then(async (state) => {
               if (state && state !== PlayServicesState.SUCCESS) {
                 CastContext.showPlayServicesErrorDialog(state);
               } else {
                 // Check if user wants H265 for Chromecast
                 const enableH265 = settings.enableH265ForChromecast;
+
+                // Validate required parameters before calling getStreamUrl
+                if (!api) {
+                  console.warn("API not available for Chromecast streaming");
+                  Alert.alert(
+                    t("player.client_error"),
+                    t("player.missing_parameters"),
+                  );
+                  return;
+                }
+                if (!user?.Id) {
+                  console.warn(
+                    "User not authenticated for Chromecast streaming",
+                  );
+                  Alert.alert(
+                    t("player.client_error"),
+                    t("player.missing_parameters"),
+                  );
+                  return;
+                }
+                if (!item?.Id) {
+                  console.warn("Item not available for Chromecast streaming");
+                  Alert.alert(
+                    t("player.client_error"),
+                    t("player.missing_parameters"),
+                  );
+                  return;
+                }
 
                 // Get a new URL with the Chromecast device profile
                 try {
@@ -132,7 +157,7 @@ export const PlayButton: React.FC<Props> = ({
                     item,
                     deviceProfile: enableH265 ? chromecasth265 : chromecast,
                     startTimeTicks: item?.UserData?.PlaybackPositionTicks!,
-                    userId: user?.Id,
+                    userId: user.Id,
                     audioStreamIndex: selectedOptions.audioIndex,
                     maxStreamingBitrate: selectedOptions.bitrate?.value,
                     mediaSourceId: selectedOptions.mediaSource?.Id,
@@ -220,15 +245,16 @@ export const PlayButton: React.FC<Props> = ({
                 }
               }
             });
-            break;
-          case 1:
+          },
+        },
+        {
+          title: "Device",
+          onPress: () => {
             goToPlayer(queryString);
-            break;
-          case cancelButtonIndex:
-            break;
-        }
-      },
-    );
+          },
+        },
+      ],
+    });
   }, [
     item,
     client,
@@ -236,7 +262,7 @@ export const PlayButton: React.FC<Props> = ({
     api,
     user,
     router,
-    showActionSheetWithOptions,
+    showActionSheet,
     mediaStatus,
     selectedOptions,
   ]);

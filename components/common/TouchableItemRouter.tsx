@@ -1,4 +1,3 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type {
   BaseItemDto,
@@ -15,9 +14,9 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { useFavorite } from "@/hooks/useFavorite";
+import { useFocusAnimation } from "@/hooks/useFocusAnimation";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
-import { useTVFocusAnimation } from "@/hooks/useTVFocusAnimation";
-import { useTVActionSheet } from "../tv";
+import { useActionSheet } from "../actionsheet";
 
 interface Props extends TouchableOpacityProps {
   item: BaseItemDto;
@@ -68,18 +67,17 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
 }) => {
   const router = useRouter();
   const segments = useSegments();
-  const { showActionSheetWithOptions } = useActionSheet();
-  const { showActionSheet: showActionSheetTV } = useTVActionSheet();
+  const { showActionSheet } = useActionSheet();
   const markAsPlayedStatus = useMarkAsPlayed([item]);
   const { isFavorite, toggleFavorite } = useFavorite(item);
 
   // TV animation values
   const { animatedStyle, shadowStyle, handleFocus, handleBlur } =
-    useTVFocusAnimation();
+    useFocusAnimation();
 
   const from = segments[2];
 
-  const showActionSheet = useCallback(() => {
+  const showActionSheetMenu = useCallback(() => {
     if (
       !(
         item.Type === "Movie" ||
@@ -89,46 +87,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
     )
       return;
 
-    const options = [
-      "Mark as Played",
-      "Mark as Not Played",
-      isFavorite ? "Unmark as Favorite" : "Mark as Favorite",
-      "Cancel",
-    ];
-    const cancelButtonIndex = 3;
-
-    showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex,
-      },
-      async (selectedIndex) => {
-        if (selectedIndex === 0) {
-          await markAsPlayedStatus(true);
-        } else if (selectedIndex === 1) {
-          await markAsPlayedStatus(false);
-        } else if (selectedIndex === 2) {
-          toggleFavorite();
-        }
-      },
-    );
-  }, [
-    showActionSheetWithOptions,
-    isFavorite,
-    markAsPlayedStatus,
-    toggleFavorite,
-  ]);
-  const showTVActionSheet = useCallback(() => {
-    if (
-      !(
-        item.Type === "Movie" ||
-        item.Type === "Episode" ||
-        item.Type === "Series"
-      )
-    )
-      return;
-
-    showActionSheetTV({
+    showActionSheet({
       title: "Media Options",
       message: "Choose an action for this item",
       options: [
@@ -165,7 +124,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
         },
       ],
     });
-  }, [item, showActionSheetTV, markAsPlayedStatus, isFavorite, toggleFavorite]);
+  }, [item, showActionSheet, markAsPlayedStatus, isFavorite, toggleFavorite]);
 
   const handlePress = useCallback(() => {
     if (!from) return;
@@ -183,7 +142,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
       <View style={{ overflow: "visible" }}>
         <Pressable
           onPress={handlePress}
-          onLongPress={showTVActionSheet}
+          onLongPress={showActionSheetMenu}
           onFocus={handleFocus}
           onBlur={handleBlur}
           style={[style, { overflow: "visible" }]}
@@ -200,7 +159,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
   // Non-TV platforms - use regular TouchableOpacity
   return (
     <TouchableOpacity
-      onLongPress={showActionSheet}
+      onLongPress={showActionSheetMenu}
       onPress={handlePress}
       style={style}
       {...props}

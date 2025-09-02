@@ -46,7 +46,7 @@ export const LibraryItemCard: React.FC<Props> = ({
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
-  const [settings] = useSettings();
+  const [settings] = useSettings(null);
 
   const { t } = useTranslation();
 

@@ -31,7 +31,7 @@ export const LargeMovieCarousel: React.FC<Props> = ({
   hasTVPreferredFocus,
   ...props
 }) => {
-  const [settings] = useSettings();
+  const [settings] = useSettings(null);
 
   const ref = React.useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
@@ -160,7 +160,7 @@ const RenderItem: React.FC<{
   }, [item]);
 
   const segments = useSegments();
-  const from = segments[2];
+  const from = segments[2] || "(home)";
 
   const opacity = useSharedValue(1);
 
@@ -252,8 +252,8 @@ const RenderItem: React.FC<{
               style={{
                 width: "100%",
                 height: "100%",
-                resizeMode: "contain",
               }}
+              contentFit='contain'
             />
           </View>
         </View>

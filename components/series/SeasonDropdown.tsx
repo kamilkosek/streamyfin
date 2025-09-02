@@ -9,8 +9,8 @@ import { t } from "i18next";
 import { useAtom } from "jotai";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
+import { FocusableItem } from "../common/FocusableItem";
 import { Text } from "../common/Text";
-import { TVFocusableItem } from "../common/TVFocusableItem";
 
 type Props = {
   item: BaseItemDto;
@@ -129,7 +129,7 @@ export const SeasonDropdown: React.FC<Props> = ({
             });
 
             return (
-              <TVFocusableItem
+              <FocusableItem
                 key={season.Id || season.IndexNumber || index}
                 onPress={() => onSelect(season)}
                 className={`mr-4 ${isSelected ? "opacity-100" : "opacity-70"}`}
@@ -179,7 +179,7 @@ export const SeasonDropdown: React.FC<Props> = ({
                 >
                   {title}
                 </Text>
-              </TVFocusableItem>
+              </FocusableItem>
             );
           })}
         </ScrollView>

@@ -3,7 +3,7 @@ import { router, useSegments } from "expo-router";
 import type React from "react";
 import { useCallback } from "react";
 import { type ViewProps } from "react-native";
-import { TVFocusableItem } from "@/components/common/TVFocusableItem";
+import { FocusableItem } from "@/components/common/FocusableItem";
 import GenericSlideCard from "@/components/jellyseerr/discover/GenericSlideCard";
 import Slide, { type SlideProps } from "@/components/jellyseerr/discover/Slide";
 import { Endpoints, useJellyseerr } from "@/hooks/useJellyseerr";
@@ -14,11 +14,12 @@ import { genreColorMap } from "@/utils/jellyseerr/src/components/Discover/consta
 const GenreSlide: React.FC<SlideProps & ViewProps> = ({ slide, ...props }) => {
   const segments = useSegments();
   const { jellyseerrApi } = useJellyseerr();
-  const from = segments[2];
+  const from = segments[2] || "(home)";
 
   const navigate = useCallback(
     (genre: GenreSliderItem) =>
       router.push({
+        // @ts-expect-error - Dynamic pathname for jellyseerr routing
         pathname: `/(auth)/(tabs)/${from}/jellyseerr/genre/${genre.id}`,
         params: { type: slide.type, name: genre.name },
       }),
@@ -45,7 +46,7 @@ const GenreSlide: React.FC<SlideProps & ViewProps> = ({ slide, ...props }) => {
         data={data}
         keyExtractor={(item) => item.id.toString()}
         renderItem={(item, _index) => (
-          <TVFocusableItem className='mr-2' onPress={() => navigate(item)}>
+          <FocusableItem className='mr-2' onPress={() => navigate(item)}>
             <GenericSlideCard
               className='w-28 rounded-lg overflow-hidden border border-neutral-900'
               id={item.id.toString()}
@@ -59,7 +60,7 @@ const GenreSlide: React.FC<SlideProps & ViewProps> = ({ slide, ...props }) => {
                 })`,
               )}
             />
-          </TVFocusableItem>
+          </FocusableItem>
         )}
       />
     )

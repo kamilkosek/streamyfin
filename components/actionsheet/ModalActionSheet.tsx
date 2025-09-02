@@ -25,7 +25,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-export interface TVActionSheetOption {
+export interface ActionSheetOption {
   title: string;
   onPress: () => void;
   destructive?: boolean;
@@ -33,10 +33,10 @@ export interface TVActionSheetOption {
   icon?: React.ReactNode;
 }
 
-export interface TVActionSheetProps {
+export interface ActionSheetProps {
   title?: string;
   message?: string;
-  options: TVActionSheetOption[];
+  options: ActionSheetOption[];
   cancelButtonTitle?: string;
   containerStyle?: ViewStyle;
   titleStyle?: TextStyle;
@@ -53,21 +53,21 @@ export interface TVActionSheetProps {
   visible?: boolean;
 }
 
-export interface TVActionSheetRef {
+export interface ActionSheetRef {
   show: () => void;
   hide: () => void;
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
-const TVActionSheetOption: React.FC<{
-  option: TVActionSheetOption;
+const ActionSheetOption: React.FC<{
+  option: ActionSheetOption;
   index: number;
   isFirst: boolean;
   optionStyle?: ViewStyle;
   optionTextStyle?: TextStyle;
   destructiveTextStyle?: TextStyle;
-  onPress: (option: TVActionSheetOption) => void;
+  onPress: (option: ActionSheetOption) => void;
   isInteractive: boolean;
 }> = ({
   option,
@@ -80,9 +80,11 @@ const TVActionSheetOption: React.FC<{
   isInteractive,
 }) => {
   const backgroundColor = useSharedValue("rgba(45, 45, 45, 0.95)");
+  const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     backgroundColor: backgroundColor.value,
+    transform: [{ scale: scale.value }],
   }));
 
   const handleFocus = useCallback(() => {
@@ -103,6 +105,30 @@ const TVActionSheetOption: React.FC<{
     }
   }, [backgroundColor]);
 
+  const handlePressIn = useCallback(() => {
+    if (!Platform.isTV && !option.disabled && isInteractive) {
+      // Touch feedback for mobile
+      backgroundColor.value = withTiming("rgba(147, 51, 233, 0.7)", {
+        duration: 100,
+      });
+      scale.value = withTiming(0.96, {
+        duration: 100,
+      });
+    }
+  }, [backgroundColor, scale, option.disabled, isInteractive]);
+
+  const handlePressOut = useCallback(() => {
+    if (!Platform.isTV && !option.disabled && isInteractive) {
+      // Reset touch feedback for mobile
+      backgroundColor.value = withTiming("rgba(45, 45, 45, 0.95)", {
+        duration: 150,
+      });
+      scale.value = withTiming(1, {
+        duration: 150,
+      });
+    }
+  }, [backgroundColor, scale, option.disabled, isInteractive]);
+
   const handlePress = useCallback(() => {
     if (!option.disabled && isInteractive) {
       onPress(option);
@@ -113,6 +139,8 @@ const TVActionSheetOption: React.FC<{
     <Pressable
       key={index}
       onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       onFocus={handleFocus}
       onBlur={handleBlur}
       disabled={option.disabled}
@@ -169,10 +197,7 @@ const TVActionSheetOption: React.FC<{
   );
 };
 
-export const TVModalActionSheet = forwardRef<
-  TVActionSheetRef,
-  TVActionSheetProps
->(
+export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
   (
     {
       title,
@@ -206,9 +231,11 @@ export const TVModalActionSheet = forwardRef<
 
     // Cancel button focus animation
     const cancelBackgroundColor = useSharedValue("rgba(60, 60, 60, 0.95)");
+    const cancelScale = useSharedValue(1);
 
     const cancelAnimatedStyle = useAnimatedStyle(() => ({
       backgroundColor: cancelBackgroundColor.value,
+      transform: [{ scale: cancelScale.value }],
     }));
 
     const handleCancelFocus = useCallback(() => {
@@ -228,6 +255,30 @@ export const TVModalActionSheet = forwardRef<
         });
       }
     }, [cancelBackgroundColor]);
+
+    const handleCancelPressIn = useCallback(() => {
+      if (!Platform.isTV && isInteractive) {
+        // Touch feedback for mobile
+        cancelBackgroundColor.value = withTiming("rgba(147, 51, 233, 0.7)", {
+          duration: 100,
+        });
+        cancelScale.value = withTiming(0.96, {
+          duration: 100,
+        });
+      }
+    }, [cancelBackgroundColor, cancelScale, isInteractive]);
+
+    const handleCancelPressOut = useCallback(() => {
+      if (!Platform.isTV && isInteractive) {
+        // Reset touch feedback for mobile
+        cancelBackgroundColor.value = withTiming("rgba(60, 60, 60, 0.95)", {
+          duration: 150,
+        });
+        cancelScale.value = withTiming(1, {
+          duration: 150,
+        });
+      }
+    }, [cancelBackgroundColor, cancelScale, isInteractive]);
 
     // Animated styles
     const backdropStyle = useAnimatedStyle(() => ({
@@ -292,7 +343,7 @@ export const TVModalActionSheet = forwardRef<
     }, [hide, onCancel, isInteractive]);
 
     const handleOptionPress = useCallback(
-      (option: TVActionSheetOption) => {
+      (option: ActionSheetOption) => {
         hide();
         // Small delay to allow animation to start before executing the action
         setTimeout(() => {
@@ -464,7 +515,7 @@ export const TVModalActionSheet = forwardRef<
               {/* Options */}
               <View style={{ marginBottom: 16 }}>
                 {options.map((option, index) => (
-                  <TVActionSheetOption
+                  <ActionSheetOption
                     key={index}
                     option={option}
                     index={index}
@@ -482,6 +533,8 @@ export const TVModalActionSheet = forwardRef<
               <Pressable
                 ref={cancelButtonRef}
                 onPress={handleCancel}
+                onPressIn={handleCancelPressIn}
+                onPressOut={handleCancelPressOut}
                 onFocus={handleCancelFocus}
                 onBlur={handleCancelBlur}
                 style={[
@@ -535,4 +588,4 @@ export const TVModalActionSheet = forwardRef<
   },
 );
 
-TVModalActionSheet.displayName = "TVModalActionSheet";
+ModalActionSheet.displayName = "ModalActionSheet";

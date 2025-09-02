@@ -2,9 +2,9 @@ import type React from "react";
 import { PropsWithChildren } from "react";
 import { Platform, Pressable, TouchableOpacity, View } from "react-native";
 import Animated from "react-native-reanimated";
-import { useTVFocusAnimation } from "@/hooks/useTVFocusAnimation";
+import { useFocusAnimation } from "@/hooks/useFocusAnimation";
 
-interface TVFocusableItemProps extends PropsWithChildren {
+interface FocusableItemProps extends PropsWithChildren {
   onPress?: () => void;
   className?: string;
   style?: any;
@@ -12,10 +12,10 @@ interface TVFocusableItemProps extends PropsWithChildren {
 }
 
 /**
- * Reusable component for TV-focusable items with elevation effects
+ * Reusable component for focusable items with elevation effects
  * Automatically handles platform detection and provides consistent animations
  */
-export const TVFocusableItem: React.FC<TVFocusableItemProps> = ({
+export const FocusableItem: React.FC<FocusableItemProps> = ({
   onPress,
   className,
   style,
@@ -23,7 +23,7 @@ export const TVFocusableItem: React.FC<TVFocusableItemProps> = ({
   children,
 }) => {
   const { animatedStyle, shadowStyle, handleFocus, handleBlur } =
-    useTVFocusAnimation();
+    useFocusAnimation();
 
   // TV Platform - use Pressable with elevation animation
   if (Platform.isTV) {

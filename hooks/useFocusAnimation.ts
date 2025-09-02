@@ -6,7 +6,7 @@ import {
   withSpring,
 } from "react-native-reanimated";
 
-export interface TVFocusAnimationProps {
+export interface FocusAnimationProps {
   isFocused: boolean;
   animatedStyle: any;
   shadowStyle: {
@@ -20,10 +20,11 @@ export interface TVFocusAnimationProps {
 }
 
 /**
- * Custom hook for TV platform focus animations with elevation effects
+ * Custom hook for focus animations with elevation effects
  * Provides consistent scale, shadow, and elevation animations across components
+ * current implementation provides only focus and blur handlers for tv platform
  */
-export const useTVFocusAnimation = (): TVFocusAnimationProps => {
+export const useFocusAnimation = (): FocusAnimationProps => {
   const [isFocused, setIsFocused] = useState(false);
   const scale = useSharedValue(1);
 
