@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { useCallback, useMemo } from "react";
 import { Alert, Linking, View, type ViewProps } from "react-native";
-import { TVFocusableItem } from "@/components/common/TVFocusableItem";
+import { FocusableItem } from "@/components/common/FocusableItem";
 import type { MovieDetails } from "@/utils/jellyseerr/server/models/Movie";
 import type { TvDetails } from "@/utils/jellyseerr/server/models/Tv";
 
@@ -39,9 +39,9 @@ export const ItemActions = ({ item, ...props }: Props) => {
   return (
     <View className='' {...props}>
       {trailerLink && (
-        <TVFocusableItem onPress={openTrailer}>
+        <FocusableItem onPress={openTrailer}>
           <Ionicons name='film-outline' size={24} color='white' />
-        </TVFocusableItem>
+        </FocusableItem>
       )}
     </View>
   );

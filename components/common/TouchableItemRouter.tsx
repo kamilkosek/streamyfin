@@ -15,8 +15,8 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { useFavorite } from "@/hooks/useFavorite";
+import { useFocusAnimation } from "@/hooks/useFocusAnimation";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
-import { useTVFocusAnimation } from "@/hooks/useTVFocusAnimation";
 import { useTVActionSheet } from "../tv";
 
 interface Props extends TouchableOpacityProps {
@@ -75,7 +75,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
 
   // TV animation values
   const { animatedStyle, shadowStyle, handleFocus, handleBlur } =
-    useTVFocusAnimation();
+    useFocusAnimation();
 
   const from = segments[2];
 

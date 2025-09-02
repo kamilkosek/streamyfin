@@ -2,7 +2,7 @@ import { router, useSegments } from "expo-router";
 import type React from "react";
 import { useCallback } from "react";
 import { type ViewProps } from "react-native";
-import { TVFocusableItem } from "@/components/common/TVFocusableItem";
+import { FocusableItem } from "@/components/common/FocusableItem";
 import GenericSlideCard from "@/components/jellyseerr/discover/GenericSlideCard";
 import Slide, { type SlideProps } from "@/components/jellyseerr/discover/Slide";
 import { useJellyseerr } from "@/hooks/useJellyseerr";
@@ -35,7 +35,7 @@ const CompanySlide: React.FC<
       data={data}
       keyExtractor={(item) => item.id.toString()}
       renderItem={(item, _index) => (
-        <TVFocusableItem className='mr-2' onPress={() => navigate(item)}>
+        <FocusableItem className='mr-2' onPress={() => navigate(item)}>
           <GenericSlideCard
             className='w-28 rounded-lg overflow-hidden border border-neutral-900 p-4'
             id={item.id.toString()}
@@ -44,7 +44,7 @@ const CompanySlide: React.FC<
               COMPANY_LOGO_IMAGE_FILTER,
             )}
           />
-        </TVFocusableItem>
+        </FocusableItem>
       )}
     />
   );

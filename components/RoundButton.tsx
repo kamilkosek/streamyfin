@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import type { PropsWithChildren } from "react";
 import { Platform, type TouchableOpacityProps } from "react-native";
-import { TVFocusableItem } from "@/components/common/TVFocusableItem";
+import { FocusableItem } from "@/components/common/FocusableItem";
 import { useHaptic } from "@/hooks/useHaptic";
 
 interface Props extends TouchableOpacityProps {
@@ -36,7 +36,7 @@ export const RoundButton: React.FC<PropsWithChildren<Props>> = ({
 
   if (fillColor)
     return (
-      <TVFocusableItem
+      <FocusableItem
         onPress={handlePress}
         className={`rounded-full ${buttonSize} flex items-center justify-center ${fillColorClass}`}
       >
@@ -48,12 +48,12 @@ export const RoundButton: React.FC<PropsWithChildren<Props>> = ({
           />
         ) : null}
         {children ? children : null}
-      </TVFocusableItem>
+      </FocusableItem>
     );
 
   if (background === false)
     return (
-      <TVFocusableItem
+      <FocusableItem
         onPress={handlePress}
         className={`rounded-full ${buttonSize} flex items-center justify-center ${fillColorClass}`}
       >
@@ -65,12 +65,12 @@ export const RoundButton: React.FC<PropsWithChildren<Props>> = ({
           />
         ) : null}
         {children ? children : null}
-      </TVFocusableItem>
+      </FocusableItem>
     );
 
   if (Platform.OS === "android")
     return (
-      <TVFocusableItem
+      <FocusableItem
         onPress={handlePress}
         className={`rounded-full ${buttonSize} flex items-center justify-center ${
           fillColor ? fillColorClass : "bg-neutral-800/80"
@@ -84,11 +84,11 @@ export const RoundButton: React.FC<PropsWithChildren<Props>> = ({
           />
         ) : null}
         {children ? children : null}
-      </TVFocusableItem>
+      </FocusableItem>
     );
 
   return (
-    <TVFocusableItem onPress={handlePress}>
+    <FocusableItem onPress={handlePress}>
       <BlurView
         intensity={90}
         className={`rounded-full overflow-hidden ${buttonSize} flex items-center justify-center ${fillColorClass}`}
@@ -102,6 +102,6 @@ export const RoundButton: React.FC<PropsWithChildren<Props>> = ({
         ) : null}
         {children ? children : null}
       </BlurView>
-    </TVFocusableItem>
+    </FocusableItem>
   );
 };

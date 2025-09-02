@@ -9,11 +9,11 @@ import { useDownload } from "@/providers/DownloadProvider";
 import { apiAtom, userAtom } from "@/providers/JellyfinProvider";
 import { getUserItemData } from "@/utils/jellyfin/user-library/getUserItemData";
 import ContinueWatchingPoster from "../ContinueWatchingPoster";
+import { FocusableItem } from "../common/FocusableItem";
 import {
   HorizontalScroll,
   type HorizontalScrollRef,
 } from "../common/HorrizontalScroll";
-import { TVFocusableItem } from "../common/TVFocusableItem";
 import { ItemCardText } from "../ItemCardText";
 
 // Episode item component with TV elevation effect
@@ -29,13 +29,13 @@ const EpisodeCarouselItem: React.FC<EpisodeCarouselItemProps> = ({
   onPress,
 }) => {
   return (
-    <TVFocusableItem
+    <FocusableItem
       onPress={onPress}
       className={`flex flex-col w-44 ${!isActive ? "opacity-50" : ""}`}
     >
       <ContinueWatchingPoster item={item} useEpisodePoster />
       <ItemCardText item={item} />
-    </TVFocusableItem>
+    </FocusableItem>
   );
 };
 

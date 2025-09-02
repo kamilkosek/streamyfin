@@ -10,10 +10,10 @@ import { useTranslation } from "react-i18next";
 import { Platform, View, type ViewProps } from "react-native";
 import { apiAtom } from "@/providers/JellyfinProvider";
 import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
+import { FocusableItem } from "../common/FocusableItem";
 import { HorizontalScroll } from "../common/HorrizontalScroll";
 import { Text } from "../common/Text";
 import { itemRouter } from "../common/TouchableItemRouter";
-import { TVFocusableItem } from "../common/TVFocusableItem";
 import Poster from "../posters/Poster";
 
 interface Props extends ViewProps {
@@ -29,11 +29,11 @@ const CastMemberItem: React.FC<{
   const [api] = useAtom(apiAtom);
 
   return (
-    <TVFocusableItem onPress={onPress} className='flex flex-col w-28'>
+    <FocusableItem onPress={onPress} className='flex flex-col w-28'>
       <Poster id={person.Id} url={getPrimaryImageUrl({ api, item: person })} />
       <Text className='mt-2'>{person.Name}</Text>
       <Text className='text-xs opacity-50'>{person.Role}</Text>
-    </TVFocusableItem>
+    </FocusableItem>
   );
 };
 
