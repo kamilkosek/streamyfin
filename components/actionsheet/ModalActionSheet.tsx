@@ -25,7 +25,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-export interface TVActionSheetOption {
+export interface ActionSheetOption {
   title: string;
   onPress: () => void;
   destructive?: boolean;
@@ -33,10 +33,10 @@ export interface TVActionSheetOption {
   icon?: React.ReactNode;
 }
 
-export interface TVActionSheetProps {
+export interface ActionSheetProps {
   title?: string;
   message?: string;
-  options: TVActionSheetOption[];
+  options: ActionSheetOption[];
   cancelButtonTitle?: string;
   containerStyle?: ViewStyle;
   titleStyle?: TextStyle;
@@ -53,21 +53,21 @@ export interface TVActionSheetProps {
   visible?: boolean;
 }
 
-export interface TVActionSheetRef {
+export interface ActionSheetRef {
   show: () => void;
   hide: () => void;
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
-const TVActionSheetOption: React.FC<{
-  option: TVActionSheetOption;
+const ActionSheetOption: React.FC<{
+  option: ActionSheetOption;
   index: number;
   isFirst: boolean;
   optionStyle?: ViewStyle;
   optionTextStyle?: TextStyle;
   destructiveTextStyle?: TextStyle;
-  onPress: (option: TVActionSheetOption) => void;
+  onPress: (option: ActionSheetOption) => void;
   isInteractive: boolean;
 }> = ({
   option,
@@ -197,10 +197,7 @@ const TVActionSheetOption: React.FC<{
   );
 };
 
-export const TVModalActionSheet = forwardRef<
-  TVActionSheetRef,
-  TVActionSheetProps
->(
+export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
   (
     {
       title,
@@ -346,7 +343,7 @@ export const TVModalActionSheet = forwardRef<
     }, [hide, onCancel, isInteractive]);
 
     const handleOptionPress = useCallback(
-      (option: TVActionSheetOption) => {
+      (option: ActionSheetOption) => {
         hide();
         // Small delay to allow animation to start before executing the action
         setTimeout(() => {
@@ -518,7 +515,7 @@ export const TVModalActionSheet = forwardRef<
               {/* Options */}
               <View style={{ marginBottom: 16 }}>
                 {options.map((option, index) => (
-                  <TVActionSheetOption
+                  <ActionSheetOption
                     key={index}
                     option={option}
                     index={index}
@@ -591,4 +588,4 @@ export const TVModalActionSheet = forwardRef<
   },
 );
 
-TVModalActionSheet.displayName = "TVModalActionSheet";
+ModalActionSheet.displayName = "ModalActionSheet";

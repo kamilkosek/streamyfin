@@ -7,34 +7,32 @@ import React, {
   useState,
 } from "react";
 import {
-  type TVActionSheetProps,
-  type TVActionSheetRef,
-  TVModalActionSheet,
-} from "./TVModalActionSheet";
+  type ActionSheetProps,
+  type ActionSheetRef,
+  ModalActionSheet,
+} from "./ModalActionSheet";
 
-interface TVActionSheetContextValue {
-  showActionSheet: (props: Omit<TVActionSheetProps, "visible">) => void;
+interface ActionSheetContextValue {
+  showActionSheet: (props: Omit<ActionSheetProps, "visible">) => void;
   hideActionSheet: () => void;
 }
 
-const TVActionSheetContext = createContext<TVActionSheetContextValue | null>(
-  null,
-);
+const ActionSheetContext = createContext<ActionSheetContextValue | null>(null);
 
-interface TVActionSheetProviderProps {
+interface ActionSheetProviderProps {
   children: ReactNode;
 }
 
-export const TVActionSheetProvider: React.FC<TVActionSheetProviderProps> = ({
+export const ActionSheetProvider: React.FC<ActionSheetProviderProps> = ({
   children,
 }) => {
-  const actionSheetRef = useRef<TVActionSheetRef>(null);
-  const [currentProps, setCurrentProps] = useState<TVActionSheetProps | null>(
+  const actionSheetRef = useRef<ActionSheetRef>(null);
+  const [currentProps, setCurrentProps] = useState<ActionSheetProps | null>(
     null,
   );
 
   const showActionSheet = useCallback(
-    (props: Omit<TVActionSheetProps, "visible">) => {
+    (props: Omit<ActionSheetProps, "visible">) => {
       setCurrentProps({ ...props, visible: true });
     },
     [],
@@ -57,26 +55,24 @@ export const TVActionSheetProvider: React.FC<TVActionSheetProviderProps> = ({
   }, [currentProps, hideActionSheet]);
 
   return (
-    <TVActionSheetContext.Provider value={{ showActionSheet, hideActionSheet }}>
+    <ActionSheetContext.Provider value={{ showActionSheet, hideActionSheet }}>
       {children}
       {currentProps && (
-        <TVModalActionSheet
+        <ModalActionSheet
           ref={actionSheetRef}
           {...currentProps}
           onCancel={handleCancel}
           onDismiss={handleDismiss}
         />
       )}
-    </TVActionSheetContext.Provider>
+    </ActionSheetContext.Provider>
   );
 };
 
-export const useTVActionSheet = (): TVActionSheetContextValue => {
-  const context = useContext(TVActionSheetContext);
+export const useActionSheet = (): ActionSheetContextValue => {
+  const context = useContext(ActionSheetContext);
   if (!context) {
-    throw new Error(
-      "useTVActionSheet must be used within a TVActionSheetProvider",
-    );
+    throw new Error("useActionSheet must be used within a ActionSheetProvider");
   }
   return context;
 };
