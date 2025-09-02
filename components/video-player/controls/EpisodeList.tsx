@@ -28,11 +28,17 @@ type Props = {
   item: BaseItemDto;
   close: () => void;
   goToItem: (item: BaseItemDto) => void;
+  horizontalLayout?: boolean;
 };
 
 export const seasonIndexAtom = atom<SeasonIndexState>({});
 
-export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
+export const EpisodeList: React.FC<Props> = ({
+  item,
+  close,
+  goToItem,
+  horizontalLayout = false,
+}) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
   const [seasonIndexState, setSeasonIndexState] = useAtom(seasonIndexAtom);
@@ -111,10 +117,16 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
   );
 
   const { data: episodes, isLoading: episodesLoading } = useQuery({
-    queryKey: ["episodes", item.SeriesId, selectedSeasonId],
+    queryKey: ["episodes", item.SeriesId, selectedSeasonId, horizontalLayout],
     queryFn: async () => {
       if (isOffline) {
         if (!item.SeriesId) return [];
+        if (horizontalLayout) {
+          // Return all episodes for all seasons
+          return downloadedFiles
+            ?.filter((f: DownloadedItem) => f.item.SeriesId === item.SeriesId)
+            .map((f: DownloadedItem) => f.item);
+        }
         return downloadedFiles
           ?.filter(
             (f: DownloadedItem) =>
@@ -123,7 +135,28 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
           )
           .map((f: DownloadedItem) => f.item);
       }
-      if (!api || !user?.Id || !item.Id || !selectedSeasonId) return [];
+      if (!api || !user?.Id || !item.Id) return [];
+
+      if (horizontalLayout) {
+        // Get all episodes for all seasons
+        if (!seasons || seasons.length === 0) return [];
+        const allEpisodes = [];
+        for (const season of seasons) {
+          const res = await getTvShowsApi(api).getEpisodes({
+            seriesId: item.SeriesId || "",
+            userId: user.Id,
+            seasonId: season.Id || undefined,
+            enableUserData: true,
+            fields: ["MediaSources", "MediaStreams", "Overview"],
+          });
+          if (res.data.Items) {
+            allEpisodes.push(...res.data.Items);
+          }
+        }
+        return allEpisodes;
+      }
+
+      if (!selectedSeasonId) return [];
       const res = await getTvShowsApi(api).getEpisodes({
         seriesId: item.SeriesId || "",
         userId: user.Id,
@@ -134,7 +167,9 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
 
       return res.data.Items;
     },
-    enabled: !!api && !!user?.Id && !!selectedSeasonId,
+    enabled: horizontalLayout
+      ? (!!api && !!user?.Id && !!seasons) || (isOffline && !!item.SeriesId)
+      : !!api && !!user?.Id && !!selectedSeasonId,
   });
 
   useEffect(() => {
@@ -169,13 +204,69 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
 
   // Scroll to the current item when episodes are fetched
   useEffect(() => {
-    if (episodes && scrollViewRef.current) {
+    if (episodes && scrollViewRef.current && !horizontalLayout) {
       const currentItemIndex = episodes.findIndex((e) => e.Id === item.Id);
       if (currentItemIndex !== -1) {
         scrollViewRef.current.scrollToIndex(currentItemIndex, 16); // Adjust the scroll position based on item width
       }
     }
-  }, [episodes, item.Id]);
+  }, [episodes, item.Id, horizontalLayout]);
+
+  // Group episodes by season for horizontal layout
+  const episodesBySeasonForHorizontal = useMemo(() => {
+    if (!horizontalLayout || !episodes) return [];
+
+    const grouped = episodes.reduce(
+      (acc, episode) => {
+        const seasonNumber = episode.ParentIndexNumber || 0;
+        if (!acc[seasonNumber]) {
+          acc[seasonNumber] = [];
+        }
+        acc[seasonNumber].push(episode);
+        return acc;
+      },
+      {} as Record<number, BaseItemDto[]>,
+    );
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
+      .map(([seasonNumber, seasonEpisodes]) => ({
+        seasonNumber: parseInt(seasonNumber, 10),
+        episodes: seasonEpisodes.sort(
+          (a, b) => (a.IndexNumber || 0) - (b.IndexNumber || 0),
+        ),
+      }));
+  }, [episodes, horizontalLayout]);
+
+  // Create flat data for horizontal scroll
+  const horizontalData = useMemo(() => {
+    if (!horizontalLayout) return [];
+
+    const data: Array<{
+      type: "season" | "episode";
+      seasonNumber?: number;
+      seasonName?: string;
+      episode?: BaseItemDto;
+    }> = [];
+
+    episodesBySeasonForHorizontal.forEach(
+      ({ seasonNumber, episodes: seasonEpisodes }) => {
+        // Find the season name from the seasons data
+        const seasonName =
+          seasons?.find((season) => season.IndexNumber === seasonNumber)
+            ?.Name || `Season ${seasonNumber}`;
+
+        // Add season header
+        data.push({ type: "season", seasonNumber, seasonName });
+        // Add episodes
+        seasonEpisodes.forEach((episode) => {
+          data.push({ type: "episode", episode });
+        });
+      },
+    );
+
+    return data;
+  }, [episodesBySeasonForHorizontal, horizontalLayout, seasons]);
 
   return (
     <SafeAreaView
@@ -187,19 +278,23 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
       }}
     >
       <View className='flex-row items-center p-4 z-10'>
-        {seasons && seasons.length > 0 && !episodesLoading && episodes && (
-          <SeasonDropdown
-            item={item}
-            seasons={seasons}
-            state={seasonIndexState}
-            onSelect={(season) => {
-              setSeasonIndexState((prev) => ({
-                ...prev,
-                [item.ParentId ?? ""]: season.IndexNumber,
-              }));
-            }}
-          />
-        )}
+        {!horizontalLayout &&
+          seasons &&
+          seasons.length > 0 &&
+          !episodesLoading &&
+          episodes && (
+            <SeasonDropdown
+              item={item}
+              seasons={seasons}
+              state={seasonIndexState}
+              onSelect={(season) => {
+                setSeasonIndexState((prev) => ({
+                  ...prev,
+                  [item.ParentId ?? ""]: season.IndexNumber,
+                }));
+              }}
+            />
+          )}
         <TouchableOpacity
           onPress={async () => {
             close();
@@ -216,6 +311,95 @@ export const EpisodeList: React.FC<Props> = ({ item, close, goToItem }) => {
         >
           <Loader />
         </View>
+      ) : horizontalLayout ? (
+        <HorizontalScroll
+          ref={scrollViewRef}
+          data={horizontalData}
+          height={800}
+          extraData={item}
+          renderItem={(dataItem, _idx) => {
+            if (dataItem.type === "season") {
+              return (
+                <View
+                  key={`season-${dataItem.seasonNumber}`}
+                  className='flex flex-col w-16 justify-center items-center'
+                  style={{ height: 300 }}
+                >
+                  <View
+                    style={{
+                      transform: [{ rotate: "90deg" }],
+                      width: 200,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text
+                      className='text-white text-lg font-bold'
+                      style={{
+                        textAlign: "center",
+                      }}
+                    >
+                      {dataItem.seasonName}
+                    </Text>
+                  </View>
+                </View>
+              );
+            }
+
+            const otherItem = dataItem.episode!;
+            return (
+              <View
+                key={otherItem.Id}
+                style={{}}
+                className={`flex flex-col w-44 ${
+                  item.Id !== otherItem.Id ? "opacity-50" : ""
+                }`}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    goToItem(otherItem);
+                  }}
+                >
+                  <ContinueWatchingPoster
+                    item={otherItem}
+                    useEpisodePoster
+                    showPlayButton={otherItem.Id !== item.Id}
+                  />
+                </TouchableOpacity>
+                <View className='shrink'>
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      lineHeight: 18,
+                      height: 36,
+                    }}
+                  >
+                    {otherItem.Name}
+                  </Text>
+                  <Text numberOfLines={1} className='text-xs text-neutral-475'>
+                    {`S${otherItem.ParentIndexNumber?.toString()}:E${otherItem.IndexNumber?.toString()}`}
+                  </Text>
+                  <Text className='text-xs text-neutral-500'>
+                    {runtimeTicksToSeconds(otherItem.RunTimeTicks)}
+                  </Text>
+                </View>
+                <Text
+                  numberOfLines={7}
+                  className='text-xs text-neutral-500 shrink'
+                >
+                  {otherItem.Overview}
+                </Text>
+              </View>
+            );
+          }}
+          keyExtractor={(dataItem) =>
+            dataItem.type === "season"
+              ? `season-${dataItem.seasonNumber}`
+              : (dataItem.episode?.Id ?? "")
+          }
+          estimatedItemSize={200}
+          showsHorizontalScrollIndicator={false}
+        />
       ) : (
         <HorizontalScroll
           ref={scrollViewRef}
