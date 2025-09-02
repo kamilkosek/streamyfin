@@ -1,5 +1,4 @@
 import "@/augmentations";
-import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Platform } from "react-native";
 import { useTVKeyLogger } from "@/hooks/useTVKeyLogger";
@@ -66,7 +65,7 @@ import type {
 import type { ExpoPushToken } from "expo-notifications/build/Tokens.types";
 import { useAtom } from "jotai";
 import { Toaster } from "sonner-native";
-import { TVActionSheetProvider } from "@/components/tv";
+import { ActionSheetProvider } from "@/components/actionsheet";
 import { userAtom } from "@/providers/JellyfinProvider";
 import { store } from "@/utils/store";
 
@@ -203,11 +202,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <JotaiProvider>
         <ActionSheetProvider>
-          <TVActionSheetProvider>
-            <I18nextProvider i18n={i18n}>
-              <Layout />
-            </I18nextProvider>
-          </TVActionSheetProvider>
+          <I18nextProvider i18n={i18n}>
+            <Layout />
+          </I18nextProvider>
         </ActionSheetProvider>
       </JotaiProvider>
     </GestureHandlerRootView>

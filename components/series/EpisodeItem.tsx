@@ -1,10 +1,10 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useRouter, useSegments } from "expo-router";
 import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useFavorite } from "@/hooks/useFavorite";
 import { useMarkAsPlayed } from "@/hooks/useMarkAsPlayed";
+import { useActionSheet } from "../actionsheet";
 import { FocusableEpisode } from "../common/FocusableEpisode";
 import { itemRouter, TouchableItemRouter } from "../common/TouchableItemRouter";
 
@@ -26,13 +26,13 @@ export const EpisodeItem: React.FC<Props> = ({
 }) => {
   const router = useRouter();
   const segments = useSegments();
-  const { showActionSheetWithOptions } = useActionSheet();
+  const { showActionSheet } = useActionSheet();
   const markAsPlayedStatus = useMarkAsPlayed([item]);
   const { isFavorite, toggleFavorite } = useFavorite(item);
 
   const from = segments[2];
 
-  const showActionSheet = useCallback(() => {
+  const showActionSheetMenu = useCallback(() => {
     if (
       !(
         item.Type === "Movie" ||
@@ -41,30 +41,32 @@ export const EpisodeItem: React.FC<Props> = ({
       )
     )
       return;
-    const options = [
-      "Mark as Played",
-      "Mark as Not Played",
-      isFavorite ? "Unmark as Favorite" : "Mark as Favorite",
-      "Cancel",
-    ];
-    const cancelButtonIndex = 3;
 
-    showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex,
-      },
-      async (selectedIndex) => {
-        if (selectedIndex === 0) {
-          await markAsPlayedStatus(true);
-        } else if (selectedIndex === 1) {
-          await markAsPlayedStatus(false);
-        } else if (selectedIndex === 2) {
-          toggleFavorite();
-        }
-      },
-    );
-  }, [showActionSheetWithOptions, isFavorite, markAsPlayedStatus]);
+    showActionSheet({
+      title: "Media Options",
+      message: "Choose an action for this item",
+      options: [
+        {
+          title: "Mark as Played",
+          onPress: async () => {
+            await markAsPlayedStatus(true);
+          },
+        },
+        {
+          title: "Mark as Not Played",
+          onPress: async () => {
+            await markAsPlayedStatus(false);
+          },
+        },
+        {
+          title: isFavorite ? "Unmark as Favorite" : "Mark as Favorite",
+          onPress: () => {
+            toggleFavorite();
+          },
+        },
+      ],
+    });
+  }, [showActionSheet, isFavorite, markAsPlayedStatus, toggleFavorite]);
 
   const handlePress = useCallback(() => {
     if (!from) return;
@@ -81,7 +83,7 @@ export const EpisodeItem: React.FC<Props> = ({
     return (
       <FocusableEpisode
         onPress={handlePress}
-        onLongPress={showActionSheet}
+        onLongPress={showActionSheetMenu}
         className={className}
       >
         {children}

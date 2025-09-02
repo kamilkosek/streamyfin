@@ -1,4 +1,3 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { useRouter } from "expo-router";
@@ -32,6 +31,7 @@ import { getStreamUrl } from "@/utils/jellyfin/media/getStreamUrl";
 import { chromecast } from "@/utils/profiles/chromecast";
 import { chromecasth265 } from "@/utils/profiles/chromecasth265";
 import { runtimeTicksToMinutes } from "@/utils/time";
+import { useActionSheet } from "./actionsheet";
 import type { Button } from "./Button";
 import type { SelectedOptions } from "./ItemContent";
 
@@ -50,7 +50,7 @@ export const PlayButton: React.FC<Props> = ({
   isOffline,
   ...props
 }: Props) => {
-  const { showActionSheetWithOptions } = useActionSheet();
+  const { showActionSheet } = useActionSheet();
   const client = useRemoteMediaClient();
   const mediaStatus = useMediaStatus();
   const { t } = useTranslation();
@@ -103,21 +103,18 @@ export const PlayButton: React.FC<Props> = ({
       return;
     }
 
-    const options = ["Chromecast", "Device", "Cancel"];
-    const cancelButtonIndex = 2;
-    showActionSheetWithOptions(
-      {
-        options,
-        cancelButtonIndex,
-      },
-      async (selectedIndex: number | undefined) => {
-        if (!api) return;
-        const currentTitle = mediaStatus?.mediaInfo?.metadata?.title;
-        const isOpeningCurrentlyPlayingMedia =
-          currentTitle && currentTitle === item?.Name;
+    showActionSheet({
+      title: "Select Playback Method",
+      message: "Choose where to play the media",
+      options: [
+        {
+          title: "Chromecast",
+          onPress: async () => {
+            if (!api) return;
+            const currentTitle = mediaStatus?.mediaInfo?.metadata?.title;
+            const isOpeningCurrentlyPlayingMedia =
+              currentTitle && currentTitle === item?.Name;
 
-        switch (selectedIndex) {
-          case 0:
             await CastContext.getPlayServicesState().then(async (state) => {
               if (state && state !== PlayServicesState.SUCCESS) {
                 CastContext.showPlayServicesErrorDialog(state);
@@ -220,15 +217,16 @@ export const PlayButton: React.FC<Props> = ({
                 }
               }
             });
-            break;
-          case 1:
+          },
+        },
+        {
+          title: "Device",
+          onPress: () => {
             goToPlayer(queryString);
-            break;
-          case cancelButtonIndex:
-            break;
-        }
-      },
-    );
+          },
+        },
+      ],
+    });
   }, [
     item,
     client,
@@ -236,7 +234,7 @@ export const PlayButton: React.FC<Props> = ({
     api,
     user,
     router,
-    showActionSheetWithOptions,
+    showActionSheet,
     mediaStatus,
     selectedOptions,
   ]);

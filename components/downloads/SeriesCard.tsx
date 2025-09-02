@@ -1,4 +1,3 @@
-import { useActionSheet } from "@expo/react-native-action-sheet";
 import { Ionicons } from "@expo/vector-icons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { Image } from "expo-image";
@@ -9,11 +8,12 @@ import { TouchableOpacity, View } from "react-native";
 import { DownloadSize } from "@/components/downloads/DownloadSize";
 import { useDownload } from "@/providers/DownloadProvider";
 import { storage } from "@/utils/mmkv";
+import { useActionSheet } from "../actionsheet";
 import { Text } from "../common/Text";
 
 export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
   const { deleteItems } = useDownload();
-  const { showActionSheetWithOptions } = useActionSheet();
+  const { showActionSheet } = useActionSheet();
 
   const base64Image = useMemo(() => {
     return storage.getString(items[0].SeriesId!);
@@ -21,27 +21,26 @@ export const SeriesCard: React.FC<{ items: BaseItemDto[] }> = ({ items }) => {
 
   const deleteSeries = useCallback(async () => deleteItems(items), [items]);
 
-  const showActionSheet = useCallback(() => {
-    const options = ["Delete", "Cancel"];
-    const destructiveButtonIndex = 0;
-
-    showActionSheetWithOptions(
-      {
-        options,
-        destructiveButtonIndex,
-      },
-      (selectedIndex) => {
-        if (selectedIndex === destructiveButtonIndex) {
-          deleteSeries();
-        }
-      },
-    );
-  }, [showActionSheetWithOptions, deleteSeries]);
+  const showActionSheetMenu = useCallback(() => {
+    showActionSheet({
+      title: "Delete Series",
+      message: "Are you sure you want to delete this series?",
+      options: [
+        {
+          title: "Delete",
+          onPress: () => {
+            deleteSeries();
+          },
+          destructive: true,
+        },
+      ],
+    });
+  }, [showActionSheet, deleteSeries]);
 
   return (
     <TouchableOpacity
       onPress={() => router.push(`/downloads/${items[0].SeriesId}`)}
-      onLongPress={showActionSheet}
+      onLongPress={showActionSheetMenu}
     >
       {base64Image ? (
         <View className='w-28 aspect-[10/15] rounded-lg overflow-hidden mr-2 border border-neutral-900'>
