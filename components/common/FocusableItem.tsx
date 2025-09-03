@@ -9,6 +9,7 @@ interface FocusableItemProps extends PropsWithChildren {
   className?: string;
   style?: any;
   disabled?: boolean;
+  hasTVPreferredFocus?: boolean;
 }
 
 /**
@@ -20,6 +21,7 @@ export const FocusableItem: React.FC<FocusableItemProps> = ({
   className,
   style,
   disabled = false,
+  hasTVPreferredFocus = false,
   children,
 }) => {
   const { animatedStyle, shadowStyle, handleFocus, handleBlur } =
@@ -36,6 +38,7 @@ export const FocusableItem: React.FC<FocusableItemProps> = ({
           className={className}
           style={[style, { overflow: "visible" }]}
           disabled={disabled}
+          hasTVPreferredFocus={hasTVPreferredFocus}
         >
           <Animated.View style={[animatedStyle, shadowStyle]}>
             {children}
