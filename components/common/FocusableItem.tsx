@@ -10,6 +10,12 @@ interface FocusableItemProps extends PropsWithChildren {
   style?: any;
   disabled?: boolean;
   hasTVPreferredFocus?: boolean;
+  // When true, disables the default elevation/scale focus animation on TV
+  disableFocusAnimation?: boolean;
+  // Optional TV focus/keyboard handlers (forwarded to underlying Pressable on TV)
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onKeyDown?: (e: any) => void;
 }
 
 /**
@@ -22,6 +28,10 @@ export const FocusableItem: React.FC<FocusableItemProps> = ({
   style,
   disabled = false,
   hasTVPreferredFocus = false,
+  disableFocusAnimation = false,
+  onFocus,
+  onBlur,
+  onKeyDown,
   children,
 }) => {
   const { animatedStyle, shadowStyle, handleFocus, handleBlur } =
@@ -33,14 +43,30 @@ export const FocusableItem: React.FC<FocusableItemProps> = ({
       <View style={{ overflow: "visible" }}>
         <Pressable
           onPress={onPress}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
+          onFocus={() => {
+            if (!disableFocusAnimation) handleFocus();
+            try {
+              onFocus?.();
+            } catch {}
+          }}
+          onBlur={() => {
+            if (!disableFocusAnimation) handleBlur();
+            try {
+              onBlur?.();
+            } catch {}
+          }}
           className={className}
           style={[style, { overflow: "visible" }]}
           disabled={disabled}
           hasTVPreferredFocus={hasTVPreferredFocus}
+          // @ts-expect-error onKeyDown exists on TV targets
+          onKeyDown={onKeyDown}
         >
-          <Animated.View style={[animatedStyle, shadowStyle]}>
+          <Animated.View
+            style={
+              disableFocusAnimation ? undefined : [animatedStyle, shadowStyle]
+            }
+          >
             {children}
           </Animated.View>
         </Pressable>
