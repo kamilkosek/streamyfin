@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   type TextStyle,
   View,
@@ -69,6 +70,7 @@ const ActionSheetOption: React.FC<{
   destructiveTextStyle?: TextStyle;
   onPress: (option: ActionSheetOption) => void;
   isInteractive: boolean;
+  onFocusOption?: (index: number) => void;
 }> = ({
   option,
   index,
@@ -78,6 +80,7 @@ const ActionSheetOption: React.FC<{
   destructiveTextStyle,
   onPress,
   isInteractive,
+  onFocusOption,
 }) => {
   const backgroundColor = useSharedValue("rgba(45, 45, 45, 0.95)");
   const scale = useSharedValue(1);
@@ -94,7 +97,9 @@ const ActionSheetOption: React.FC<{
         stiffness: 300,
       });
     }
-  }, [backgroundColor]);
+    // Inform parent to auto-scroll on TV
+    onFocusOption?.(index);
+  }, [backgroundColor, onFocusOption, index]);
 
   const handleBlur = useCallback(() => {
     if (Platform.isTV) {
@@ -406,6 +411,16 @@ export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
       show,
       hide,
     }));
+    // Ref for options ScrollView (used to auto-scroll to focused option on TV)
+    const optionsScrollRef = useRef<ScrollView>(null);
+
+    const scrollToOption = useCallback((idx: number) => {
+      if (!Platform.isTV) return;
+      // Approximate item height including spacing (minHeight 56 + margin 8)
+      const ITEM_APPROX = 64;
+      const targetY = Math.max(0, idx * ITEM_APPROX - ITEM_APPROX);
+      optionsScrollRef.current?.scrollTo({ y: targetY, animated: true });
+    }, []);
 
     if (!visible) {
       return null;
@@ -512,8 +527,13 @@ export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
                 </Text>
               )}
 
-              {/* Options */}
-              <View style={{ marginBottom: 16 }}>
+              {/* Options (scrollable on TV) */}
+              <ScrollView
+                ref={optionsScrollRef}
+                style={{ alignSelf: "stretch", maxHeight: screenHeight * 0.5 }}
+                contentContainerStyle={{ paddingBottom: 16 }}
+                showsVerticalScrollIndicator={!Platform.isTV}
+              >
                 {options.map((option, index) => (
                   <ActionSheetOption
                     key={index}
@@ -525,9 +545,10 @@ export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
                     destructiveTextStyle={destructiveTextStyle}
                     onPress={handleOptionPress}
                     isInteractive={isInteractive}
+                    onFocusOption={scrollToOption}
                   />
                 ))}
-              </View>
+              </ScrollView>
 
               {/* Cancel Button */}
               <Pressable
