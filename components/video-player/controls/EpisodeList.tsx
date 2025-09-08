@@ -29,6 +29,7 @@ type Props = {
   close: () => void;
   goToItem: (item: BaseItemDto) => void;
   horizontalLayout?: boolean;
+  embedded?: boolean;
 };
 
 export const seasonIndexAtom = atom<SeasonIndexState>({});
@@ -38,6 +39,7 @@ export const EpisodeList: React.FC<Props> = ({
   close,
   goToItem,
   horizontalLayout = false,
+  embedded = false,
 }) => {
   const [api] = useAtom(apiAtom);
   const [user] = useAtom(userAtom);
@@ -268,7 +270,103 @@ export const EpisodeList: React.FC<Props> = ({
     return data;
   }, [episodesBySeasonForHorizontal, horizontalLayout, seasons]);
 
-  return (
+  return embedded ? (
+    // Embedded mode for TV (no SafeAreaView, no background, no close button)
+    !episodes || episodesLoading ? (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Loader />
+      </View>
+    ) : horizontalLayout ? (
+      <HorizontalScroll
+        ref={scrollViewRef}
+        data={horizontalData}
+        height={150}
+        extraData={item}
+        renderItem={(dataItem, _idx) => {
+          if (dataItem.type === "season") {
+            return (
+              <View
+                key={`season-${dataItem.seasonNumber}`}
+                className='flex flex-col w-16 justify-center items-center'
+                style={{ height: 300 }}
+              >
+                <View
+                  style={{
+                    transform: [{ rotate: "90deg" }],
+                    width: 200,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text
+                    className='text-white text-lg font-bold'
+                    style={{
+                      textAlign: "center",
+                    }}
+                  >
+                    {dataItem.seasonName}
+                  </Text>
+                </View>
+              </View>
+            );
+          }
+
+          const otherItem = dataItem.episode!;
+          return (
+            <View
+              key={otherItem.Id}
+              style={{}}
+              className={`flex flex-col w-44 ${
+                item.Id !== otherItem.Id ? "opacity-50" : ""
+              }`}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  goToItem(otherItem);
+                }}
+              >
+                <ContinueWatchingPoster
+                  item={otherItem}
+                  useEpisodePoster
+                  showPlayButton={otherItem.Id !== item.Id}
+                />
+              </TouchableOpacity>
+              <View className='shrink'>
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    lineHeight: 18,
+                    height: 36,
+                  }}
+                >
+                  {otherItem.Name}
+                </Text>
+                <Text numberOfLines={1} className='text-xs text-neutral-475'>
+                  {`S${otherItem.ParentIndexNumber?.toString()}:E${otherItem.IndexNumber?.toString()}`}
+                </Text>
+                <Text className='text-xs text-neutral-500'>
+                  {runtimeTicksToSeconds(otherItem.RunTimeTicks)}
+                </Text>
+              </View>
+              <Text
+                numberOfLines={7}
+                className='text-xs text-neutral-500 shrink'
+              >
+                {otherItem.Overview}
+              </Text>
+            </View>
+          );
+        }}
+        keyExtractor={(dataItem) =>
+          dataItem.type === "season"
+            ? `season-${dataItem.seasonNumber}`
+            : (dataItem.episode?.Id ?? "")
+        }
+        estimatedItemSize={200}
+        showsHorizontalScrollIndicator={false}
+      />
+    ) : null
+  ) : (
     <SafeAreaView
       style={{
         position: "absolute",
