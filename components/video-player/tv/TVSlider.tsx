@@ -249,7 +249,9 @@ export const TVSlider = memo(function TVSlider({
         // bubble others to parent (e.g., ArrowDown to open episode list)
         try {
           onKeyDown?.(e);
-        } catch {}
+        } catch (error) {
+          console.warn('TVSlider onKeyDown error:', error);
+        }
       }}
       onFocus={() => {
         if (__DEV__) console.log("TVSlider focus");
