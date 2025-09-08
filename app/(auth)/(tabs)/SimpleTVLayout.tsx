@@ -3,6 +3,7 @@ import { Slot, usePathname, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Image,
   LayoutAnimation,
   Platform,
   Text,
@@ -49,6 +50,13 @@ export function TVDrawerLayout() {
       route: "/(auth)/(tabs)/(libraries)",
       titleKey: "tabs.library",
       icon: "video-library",
+    },
+    {
+      key: "settings",
+      // Settings page is currently under the Home tab group
+      route: "/(auth)/(tabs)/(home)/settings",
+      titleKey: "home.settings.settings_title",
+      icon: "settings",
     },
   ];
 
@@ -187,14 +195,18 @@ export function TVDrawerLayout() {
                 : "justify-center px-2 py-0"
             }`}
           >
-            <MaterialIcons name='tv' size={24} color='#9334E9' />
-            <Text
+            <Image
+              source={require("@/assets/images/icon-android-plain.png")}
+              style={{ width: 40, height: 40 }}
+              accessibilityLabel='Streamyfin icon'
+            />
+            {/* <Text
               className={`text-xl font-bold text-purple-600 ml-3 ${
                 !isSidebarFocused ? "opacity-0 w-0 h-0" : ""
               }`}
             >
               Streamyfin
-            </Text>
+            </Text> */}
           </View>
 
           {/* Menu Items - keep Touchables mounted in both states */}
