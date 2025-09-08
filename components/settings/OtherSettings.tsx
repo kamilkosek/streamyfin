@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import * as TaskManager from "expo-task-manager";
 import { TFunction } from "i18next";
 import type React from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Linking, Platform, Switch, TouchableOpacity } from "react-native";
 import { toast } from "sonner-native";
@@ -11,12 +11,14 @@ import { BITRATES } from "@/components/BitrateSelector";
 import Dropdown from "@/components/common/Dropdown";
 import DisabledSetting from "@/components/settings/DisabledSetting";
 import * as ScreenOrientation from "@/packages/expo-screen-orientation";
-import { ScreenOrientationEnum, useSettings } from "@/utils/atoms/settings";
+import { useSettings } from "@/utils/atoms/settings";
 import {
   BACKGROUND_FETCH_TASK,
   registerBackgroundFetchAsync,
   unregisterBackgroundFetchAsync,
 } from "@/utils/background-tasks";
+import { ModalActionSheet } from "../actionsheet/ModalActionSheet";
+import { FocusableItem } from "../common/FocusableItem";
 import { Text } from "../common/Text";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
@@ -26,6 +28,12 @@ export const OtherSettings: React.FC = () => {
   const [settings, updateSettings, pluginSettings] = useSettings(null);
 
   const { t } = useTranslation();
+  const isTv = Platform.isTV;
+
+  // TV modal visibility states
+  const [orientationSheetVisible, setOrientationSheetVisible] = useState(false);
+  const [qualitySheetVisible, setQualitySheetVisible] = useState(false);
+  const [autoplaySheetVisible, setAutoplaySheetVisible] = useState(false);
 
   /********************
    * Background task
@@ -89,41 +97,117 @@ export const OtherSettings: React.FC = () => {
     [],
   );
 
+  // TV ActionSheet options
+  const orientationOptions = useMemo(() => {
+    const disabled =
+      pluginSettings?.defaultVideoOrientation?.locked ||
+      settings?.followDeviceOrientation;
+    return orientations.map((o) => ({
+      title: t(
+        orientationTranslations[o as keyof typeof orientationTranslations] ||
+          "home.settings.other.orientations.DEFAULT",
+      ),
+      icon:
+        settings?.defaultVideoOrientation === o ? (
+          <Ionicons name='checkmark' size={18} color='#ffffff' />
+        ) : undefined,
+      onPress: () => {
+        if (!disabled) updateSettings({ defaultVideoOrientation: o });
+        setOrientationSheetVisible(false);
+      },
+      disabled,
+    }));
+  }, [
+    orientations,
+    settings?.defaultVideoOrientation,
+    settings?.followDeviceOrientation,
+    pluginSettings?.defaultVideoOrientation?.locked,
+    t,
+    orientationTranslations,
+    updateSettings,
+  ]);
+
+  const bitrateOptions = useMemo(() => {
+    const disabled = pluginSettings?.defaultBitrate?.locked;
+    return BITRATES.map((b) => ({
+      title: b.key ?? "Unknown",
+      icon:
+        settings?.defaultBitrate?.key === b.key ? (
+          <Ionicons name='checkmark' size={18} color='#ffffff' />
+        ) : undefined,
+      onPress: () => {
+        if (!disabled) updateSettings({ defaultBitrate: b });
+        setQualitySheetVisible(false);
+      },
+      disabled,
+    }));
+  }, [
+    pluginSettings?.defaultBitrate?.locked,
+    settings?.defaultBitrate?.key,
+    updateSettings,
+  ]);
+
+  const autoplayItems = useMemo(() => AUTOPLAY_EPISODES_COUNT(t), [t]);
+  const autoplayOptions = useMemo(() => {
+    return autoplayItems.map((it) => ({
+      title: it.key ?? "Unknown",
+      icon:
+        settings?.maxAutoPlayEpisodeCount?.value === it.value ? (
+          <Ionicons name='checkmark' size={18} color='#ffffff' />
+        ) : undefined,
+      onPress: () => {
+        updateSettings({ maxAutoPlayEpisodeCount: it });
+        setAutoplaySheetVisible(false);
+      },
+    }));
+  }, [autoplayItems, settings?.maxAutoPlayEpisodeCount?.value, updateSettings]);
+
   if (!settings) return null;
 
   return (
     <DisabledSetting disabled={disabled}>
       <ListGroup title={t("home.settings.other.other_title")} className=''>
-        <ListItem
-          title={t("home.settings.other.follow_device_orientation")}
-          disabled={pluginSettings?.followDeviceOrientation?.locked}
-        >
-          <Switch
-            value={settings.followDeviceOrientation}
+        {!Platform.isTV && (
+          <ListItem
+            title={t("home.settings.other.follow_device_orientation")}
             disabled={pluginSettings?.followDeviceOrientation?.locked}
-            onValueChange={(value) =>
-              updateSettings({ followDeviceOrientation: value })
-            }
-          />
-        </ListItem>
-
-        <ListItem
-          title={t("home.settings.other.video_orientation")}
-          disabled={
-            pluginSettings?.defaultVideoOrientation?.locked ||
-            settings.followDeviceOrientation
-          }
-        >
-          <Dropdown
-            data={orientations}
+          >
+            <Switch
+              value={settings.followDeviceOrientation}
+              disabled={pluginSettings?.followDeviceOrientation?.locked}
+              onValueChange={(value) =>
+                updateSettings({ followDeviceOrientation: value })
+              }
+            />
+          </ListItem>
+        )}
+        {Platform.isTV && (
+          <ListItem
+            title={t("home.settings.other.video_orientation")}
             disabled={
               pluginSettings?.defaultVideoOrientation?.locked ||
               settings.followDeviceOrientation
             }
-            keyExtractor={String}
-            titleExtractor={(item) => t(ScreenOrientationEnum[item])}
-            title={
-              <TouchableOpacity className='flex flex-row items-center justify-between py-3 pl-3'>
+          >
+            {/* TV: Use ModalActionSheet instead of Dropdown */}
+            <FocusableItem>
+              <TouchableOpacity
+                className='flex flex-row items-center justify-between py-3 pl-3'
+                onPress={() => {
+                  if (
+                    !(
+                      pluginSettings?.defaultVideoOrientation?.locked ||
+                      settings.followDeviceOrientation
+                    )
+                  ) {
+                    setOrientationSheetVisible(true);
+                  }
+                }}
+                disabled={
+                  pluginSettings?.defaultVideoOrientation?.locked ||
+                  settings.followDeviceOrientation
+                }
+              >
                 <Text className='mr-1 text-[#8E8D91]'>
                   {t(
                     orientationTranslations[
@@ -137,26 +221,30 @@ export const OtherSettings: React.FC = () => {
                   color='#5A5960'
                 />
               </TouchableOpacity>
-            }
-            label={t("home.settings.other.orientation")}
-            onSelected={(defaultVideoOrientation) =>
-              updateSettings({ defaultVideoOrientation })
-            }
-          />
-        </ListItem>
-
-        <ListItem
-          title={t("home.settings.other.safe_area_in_controls")}
-          disabled={pluginSettings?.safeAreaInControlsEnabled?.locked}
-        >
-          <Switch
-            value={settings.safeAreaInControlsEnabled}
+            </FocusableItem>
+            <ModalActionSheet
+              title={t("home.settings.other.orientation")}
+              options={orientationOptions}
+              visible={orientationSheetVisible}
+              onCancel={() => setOrientationSheetVisible(false)}
+              onDismiss={() => setOrientationSheetVisible(false)}
+            />
+          </ListItem>
+        )}
+        {!Platform.isTV && (
+          <ListItem
+            title={t("home.settings.other.safe_area_in_controls")}
             disabled={pluginSettings?.safeAreaInControlsEnabled?.locked}
-            onValueChange={(value) =>
-              updateSettings({ safeAreaInControlsEnabled: value })
-            }
-          />
-        </ListItem>
+          >
+            <Switch
+              value={settings.safeAreaInControlsEnabled}
+              disabled={pluginSettings?.safeAreaInControlsEnabled?.locked}
+              onValueChange={(value) =>
+                updateSettings({ safeAreaInControlsEnabled: value })
+              }
+            />
+          </ListItem>
+        )}
 
         {/* {(Platform.OS === "ios" || Platform.isTVOS)&& (
           <ListItem
@@ -197,13 +285,15 @@ export const OtherSettings: React.FC = () => {
             )
           }
         >
-          <Switch
-            value={settings.showCustomMenuLinks}
-            disabled={pluginSettings?.showCustomMenuLinks?.locked}
-            onValueChange={(value) =>
-              updateSettings({ showCustomMenuLinks: value })
-            }
-          />
+          <FocusableItem>
+            <Switch
+              value={settings.showCustomMenuLinks}
+              disabled={pluginSettings?.showCustomMenuLinks?.locked}
+              onValueChange={(value) =>
+                updateSettings({ showCustomMenuLinks: value })
+              }
+            />
+          </FocusableItem>
         </ListItem>
         <ListItem
           onPress={() => router.push("/settings/hide-libraries/page")}
@@ -214,61 +304,124 @@ export const OtherSettings: React.FC = () => {
           title={t("home.settings.other.default_quality")}
           disabled={pluginSettings?.defaultBitrate?.locked}
         >
-          <Dropdown
-            data={BITRATES}
-            disabled={pluginSettings?.defaultBitrate?.locked}
-            keyExtractor={(item) => item.key}
-            titleExtractor={(item) => item.key}
-            title={
-              <TouchableOpacity className='flex flex-row items-center justify-between py-3 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {settings.defaultBitrate?.key}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </TouchableOpacity>
-            }
-            label={t("home.settings.other.default_quality")}
-            onSelected={(defaultBitrate) => updateSettings({ defaultBitrate })}
-          />
+          {isTv ? (
+            <>
+              <FocusableItem>
+                <TouchableOpacity
+                  className='flex flex-row items-center justify-between py-3 pl-3'
+                  onPress={() => {
+                    if (!pluginSettings?.defaultBitrate?.locked) {
+                      setQualitySheetVisible(true);
+                    }
+                  }}
+                  disabled={pluginSettings?.defaultBitrate?.locked}
+                >
+                  <Text className='mr-1 text-[#8E8D91]'>
+                    {settings.defaultBitrate?.key}
+                  </Text>
+                  <Ionicons
+                    name='chevron-expand-sharp'
+                    size={18}
+                    color='#5A5960'
+                  />
+                </TouchableOpacity>
+              </FocusableItem>
+              <ModalActionSheet
+                title={t("home.settings.other.default_quality")}
+                options={bitrateOptions}
+                visible={qualitySheetVisible}
+                onCancel={() => setQualitySheetVisible(false)}
+                onDismiss={() => setQualitySheetVisible(false)}
+              />
+            </>
+          ) : (
+            <Dropdown
+              data={BITRATES}
+              disabled={pluginSettings?.defaultBitrate?.locked}
+              keyExtractor={(item) => item.key}
+              titleExtractor={(item) => item.key}
+              title={
+                <TouchableOpacity className='flex flex-row items-center justify-between py-3 pl-3'>
+                  <Text className='mr-1 text-[#8E8D91]'>
+                    {settings.defaultBitrate?.key}
+                  </Text>
+                  <Ionicons
+                    name='chevron-expand-sharp'
+                    size={18}
+                    color='#5A5960'
+                  />
+                </TouchableOpacity>
+              }
+              label={t("home.settings.other.default_quality")}
+              onSelected={(defaultBitrate) =>
+                updateSettings({ defaultBitrate })
+              }
+            />
+          )}
         </ListItem>
         <ListItem
           title={t("home.settings.other.disable_haptic_feedback")}
           disabled={pluginSettings?.disableHapticFeedback?.locked}
         >
-          <Switch
-            value={settings.disableHapticFeedback}
-            disabled={pluginSettings?.disableHapticFeedback?.locked}
-            onValueChange={(disableHapticFeedback) =>
-              updateSettings({ disableHapticFeedback })
-            }
-          />
+          <FocusableItem>
+            <Switch
+              value={settings.disableHapticFeedback}
+              disabled={pluginSettings?.disableHapticFeedback?.locked}
+              onValueChange={(disableHapticFeedback) =>
+                updateSettings({ disableHapticFeedback })
+              }
+            />
+          </FocusableItem>
         </ListItem>
         <ListItem title={t("home.settings.other.max_auto_play_episode_count")}>
-          <Dropdown
-            data={AUTOPLAY_EPISODES_COUNT(t)}
-            keyExtractor={(item) => item.key}
-            titleExtractor={(item) => item.key}
-            title={
-              <TouchableOpacity className='flex flex-row items-center justify-between py-3 pl-3'>
-                <Text className='mr-1 text-[#8E8D91]'>
-                  {t(settings?.maxAutoPlayEpisodeCount.key)}
-                </Text>
-                <Ionicons
-                  name='chevron-expand-sharp'
-                  size={18}
-                  color='#5A5960'
-                />
-              </TouchableOpacity>
-            }
-            label={t("home.settings.other.max_auto_play_episode_count")}
-            onSelected={(maxAutoPlayEpisodeCount) =>
-              updateSettings({ maxAutoPlayEpisodeCount })
-            }
-          />
+          {isTv ? (
+            <>
+              <FocusableItem>
+                <TouchableOpacity
+                  className='flex flex-row items-center justify-between py-3 pl-3'
+                  onPress={() => setAutoplaySheetVisible(true)}
+                >
+                  <Text className='mr-1 text-[#8E8D91]'>
+                    {t(settings?.maxAutoPlayEpisodeCount.key)}
+                  </Text>
+                  <Ionicons
+                    name='chevron-expand-sharp'
+                    size={18}
+                    color='#5A5960'
+                  />
+                </TouchableOpacity>
+              </FocusableItem>
+              <ModalActionSheet
+                title={t("home.settings.other.max_auto_play_episode_count")}
+                options={autoplayOptions}
+                visible={autoplaySheetVisible}
+                onCancel={() => setAutoplaySheetVisible(false)}
+                onDismiss={() => setAutoplaySheetVisible(false)}
+              />
+            </>
+          ) : (
+            <Dropdown
+              data={AUTOPLAY_EPISODES_COUNT(t)}
+              keyExtractor={(item) => item.key}
+              titleExtractor={(item) => item.key}
+              title={
+                <TouchableOpacity className='flex flex-row items-center justify-between py-3 pl-3'>
+                  <Text className='mr-1 text-[#8E8D91]'>
+                    {t(settings?.maxAutoPlayEpisodeCount.key)}
+                  </Text>
+                  <Ionicons
+                    name='chevron-expand-sharp'
+                    size={18}
+                    color='#5A5960'
+                  />
+                </TouchableOpacity>
+              }
+              label={t("home.settings.other.max_auto_play_episode_count")}
+              onSelected={(maxAutoPlayEpisodeCount) =>
+                updateSettings({ maxAutoPlayEpisodeCount })
+              }
+            />
+          )}
         </ListItem>
       </ListGroup>
     </DisabledSetting>

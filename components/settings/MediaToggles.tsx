@@ -5,6 +5,7 @@ import type { ViewProps } from "react-native";
 import { Stepper } from "@/components/inputs/Stepper";
 import DisabledSetting from "@/components/settings/DisabledSetting";
 import { useSettings } from "@/utils/atoms/settings";
+import { FocusableItem } from "../common/FocusableItem";
 import { ListGroup } from "../list/ListGroup";
 import { ListItem } from "../list/ListItem";
 
@@ -31,30 +32,35 @@ export const MediaToggles: React.FC<Props> = ({ ...props }) => {
           title={t("home.settings.media_controls.forward_skip_length")}
           disabled={pluginSettings?.forwardSkipTime?.locked}
         >
-          <Stepper
-            value={settings.forwardSkipTime}
-            disabled={pluginSettings?.forwardSkipTime?.locked}
-            step={5}
-            appendValue={t("home.settings.media_controls.seconds_unit")}
-            min={0}
-            max={60}
-            onUpdate={(forwardSkipTime) => updateSettings({ forwardSkipTime })}
-          />
+          <FocusableItem>
+            <Stepper
+              value={settings.forwardSkipTime}
+              disabled={pluginSettings?.forwardSkipTime?.locked}
+              step={5}
+              appendValue={t("home.settings.media_controls.seconds_unit")}
+              min={0}
+              max={60}
+              onUpdate={(forwardSkipTime) =>
+                updateSettings({ forwardSkipTime })
+              }
+            />
+          </FocusableItem>
         </ListItem>
-
         <ListItem
           title={t("home.settings.media_controls.rewind_length")}
           disabled={pluginSettings?.rewindSkipTime?.locked}
         >
-          <Stepper
-            value={settings.rewindSkipTime}
-            disabled={pluginSettings?.rewindSkipTime?.locked}
-            step={5}
-            appendValue={t("home.settings.media_controls.seconds_unit")}
-            min={0}
-            max={60}
-            onUpdate={(rewindSkipTime) => updateSettings({ rewindSkipTime })}
-          />
+          <FocusableItem>
+            <Stepper
+              value={settings.rewindSkipTime}
+              disabled={pluginSettings?.rewindSkipTime?.locked}
+              step={5}
+              appendValue={t("home.settings.media_controls.seconds_unit")}
+              min={0}
+              max={60}
+              onUpdate={(rewindSkipTime) => updateSettings({ rewindSkipTime })}
+            />
+          </FocusableItem>
         </ListItem>
       </ListGroup>
     </DisabledSetting>

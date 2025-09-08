@@ -39,6 +39,7 @@ export default function settings() {
 
   const navigation = useNavigation();
   useEffect(() => {
+    if (Platform.isTV) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
@@ -53,7 +54,6 @@ export default function settings() {
       ),
     });
   }, []);
-
   return (
     <ScrollView
       contentContainerStyle={{
@@ -64,11 +64,11 @@ export default function settings() {
       <View className='p-4 flex flex-col gap-y-4'>
         <UserInfo />
 
-        <QuickConnect className='mb-4' />
+        {!Platform.isTV && <QuickConnect className='mb-4' />}
 
         <MediaProvider>
           <MediaToggles className='mb-4' />
-          <GestureControls className='mb-4' />
+          {!Platform.isTV && <GestureControls className='mb-4' />}
           <AudioToggles className='mb-4' />
           <SubtitleToggles className='mb-4' />
         </MediaProvider>
