@@ -15,7 +15,7 @@ interface Props extends ViewProps {}
 
 export const AppLanguageSelector: React.FC<Props> = () => {
   const isTv = Platform.isTV;
-  const [settings, updateSettings] = useSettings(null);
+  const { settings, updateSettings } = useSettings();
   const { t } = useTranslation();
 
   const [sheetVisible, setSheetVisible] = useState(false);

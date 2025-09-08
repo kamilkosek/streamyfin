@@ -31,7 +31,7 @@ export const CenterControls: FC<CenterControlsProps> = ({
   handleSkipBackward,
   handleSkipForward,
 }) => {
-  const [settings] = useSettings(null);
+  const { settings } = useSettings();
   const insets = useSafeAreaInsets();
 
   return (

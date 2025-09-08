@@ -25,7 +25,7 @@ import { ListItem } from "../list/ListItem";
 
 export const OtherSettings: React.FC = () => {
   const router = useRouter();
-  const [settings, updateSettings, pluginSettings] = useSettings(null);
+  const { settings, updateSettings, pluginSettings } = useSettings();
 
   const { t } = useTranslation();
   const isTv = Platform.isTV;

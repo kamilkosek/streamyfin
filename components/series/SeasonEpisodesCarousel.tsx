@@ -13,7 +13,7 @@ import { FocusableItem } from "../common/FocusableItem";
 import {
   HorizontalScroll,
   type HorizontalScrollRef,
-} from "../common/HorrizontalScroll";
+} from "../common/HorizontalScroll";
 import { ItemCardText } from "../ItemCardText";
 
 // Episode item component with TV elevation effect
@@ -66,11 +66,7 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
     return item?.SeasonId;
   }, [item]);
 
-  const {
-    data: episodes,
-    isLoading,
-    isFetching,
-  } = useQuery({
+  const { data: episodes, isPending } = useQuery({
     queryKey: ["episodes", seasonId, isOffline],
     queryFn: async () => {
       if (isOffline) {
@@ -156,7 +152,7 @@ export const SeasonEpisodesCarousel: React.FC<Props> = ({
       ref={scrollRef}
       data={episodes}
       extraData={item}
-      loading={loading || isLoading || isFetching}
+      loading={loading || isPending}
       renderItem={(_item, _idx) => (
         <EpisodeCarouselItem
           key={_item.Id}

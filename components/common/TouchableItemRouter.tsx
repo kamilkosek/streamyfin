@@ -1,8 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import type {
-  BaseItemDto,
-  BaseItemPerson,
-} from "@jellyfin/sdk/lib/generated-client/models";
+import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useRouter, useSegments } from "expo-router";
 import { type PropsWithChildren, useCallback } from "react";
 import {
@@ -23,10 +20,7 @@ interface Props extends TouchableOpacityProps {
   isOffline?: boolean;
 }
 
-export const itemRouter = (
-  item: BaseItemDto | BaseItemPerson,
-  from: string,
-) => {
+export const itemRouter = (item: BaseItemDto, from: string) => {
   if ("CollectionType" in item && item.CollectionType === "livetv") {
     return `/(auth)/(tabs)/${from}/livetv`;
   }
@@ -35,8 +29,8 @@ export const itemRouter = (
     return `/(auth)/(tabs)/${from}/series/${item.Id}`;
   }
 
-  if (item.Type === "Person" || item.Type === "Actor") {
-    return `/(auth)/(tabs)/${from}/actors/${item.Id}`;
+  if (item.Type === "Person") {
+    return `/(auth)/(tabs)/${from}/persons/${item.Id}`;
   }
 
   if (item.Type === "BoxSet") {
