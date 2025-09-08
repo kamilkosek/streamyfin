@@ -24,7 +24,10 @@ export interface FocusAnimationProps {
  * Provides consistent scale, shadow, and elevation animations across components
  * current implementation provides only focus and blur handlers for tv platform
  */
-export const useFocusAnimation = (): FocusAnimationProps => {
+export const useFocusAnimation = (options?: {
+  enableAnimation?: boolean;
+}): FocusAnimationProps => {
+  const enableAnimation = options?.enableAnimation ?? true;
   const [isFocused, setIsFocused] = useState(false);
   const scale = useSharedValue(1);
 
@@ -49,22 +52,26 @@ export const useFocusAnimation = (): FocusAnimationProps => {
   const handleFocus = useCallback(() => {
     if (Platform.isTV) {
       setIsFocused(true);
-      scale.value = withSpring(1.16, {
-        damping: 15,
-        stiffness: 300,
-      });
+      if (enableAnimation) {
+        scale.value = withSpring(1.16, {
+          damping: 15,
+          stiffness: 300,
+        });
+      }
     }
-  }, [scale]);
+  }, [scale, enableAnimation]);
 
   const handleBlur = useCallback(() => {
     if (Platform.isTV) {
       setIsFocused(false);
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 300,
-      });
+      if (enableAnimation) {
+        scale.value = withSpring(1, {
+          damping: 15,
+          stiffness: 300,
+        });
+      }
     }
-  }, [scale]);
+  }, [scale, enableAnimation]);
 
   return {
     isFocused,

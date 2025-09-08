@@ -12,6 +12,8 @@ interface FocusableItemProps extends PropsWithChildren {
   hasTVPreferredFocus?: boolean;
   // When true, disables the default elevation/scale focus animation on TV
   disableFocusAnimation?: boolean;
+  // When true, shows a border when the item is focused (TV only)
+  borderOnFocus?: boolean;
   // Optional TV focus/keyboard handlers (forwarded to underlying Pressable on TV)
   onFocus?: () => void;
   onBlur?: () => void;
@@ -29,28 +31,36 @@ export const FocusableItem: React.FC<FocusableItemProps> = ({
   disabled = false,
   hasTVPreferredFocus = false,
   disableFocusAnimation = false,
+  borderOnFocus = false,
   onFocus,
   onBlur,
   onKeyDown,
   children,
 }) => {
-  const { animatedStyle, shadowStyle, handleFocus, handleBlur } =
-    useFocusAnimation();
+  const { isFocused, animatedStyle, shadowStyle, handleFocus, handleBlur } =
+    useFocusAnimation({ enableAnimation: !disableFocusAnimation });
 
   // TV Platform - use Pressable with elevation animation
   if (Platform.isTV) {
+    // Border style applied only when focused and borderOnFocus is enabled
+    // Kept separate from animation disable flag so users can show border without scale/elevation
+    const focusBorderStyle =
+      borderOnFocus && isFocused
+        ? { borderWidth: 2, borderColor: "#FFFFFF", borderRadius: 4 }
+        : undefined;
+
     return (
       <View style={{ overflow: "visible" }}>
         <Pressable
           onPress={onPress}
           onFocus={() => {
-            if (!disableFocusAnimation) handleFocus();
+            handleFocus();
             try {
               onFocus?.();
             } catch {}
           }}
           onBlur={() => {
-            if (!disableFocusAnimation) handleBlur();
+            handleBlur();
             try {
               onBlur?.();
             } catch {}
@@ -63,9 +73,10 @@ export const FocusableItem: React.FC<FocusableItemProps> = ({
           onKeyDown={onKeyDown}
         >
           <Animated.View
-            style={
-              disableFocusAnimation ? undefined : [animatedStyle, shadowStyle]
-            }
+            style={[
+              !disableFocusAnimation ? [animatedStyle, shadowStyle] : undefined,
+              focusBorderStyle,
+            ]}
           >
             {children}
           </Animated.View>
