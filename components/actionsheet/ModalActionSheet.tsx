@@ -15,6 +15,8 @@ import {
   ScrollView,
   Text,
   type TextStyle,
+  TVEventControl,
+  useTVEventHandler,
   View,
   type ViewStyle,
 } from "react-native";
@@ -365,7 +367,7 @@ export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
       handleCancel();
     }, [handleCancel, isInteractive]);
 
-    // Handle Android back button
+    // Handle Android TV back button
     useEffect(() => {
       if (!visible || !Platform.isTV) return;
 
@@ -381,6 +383,32 @@ export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
 
       return () => backHandler.remove();
     }, [visible, handleCancel]);
+
+    // Intercept tvOS Menu key so it doesn't trigger navigation, and cancel instead
+    useTVEventHandler((evt) => {
+      if (!visible || !Platform.isTV) return;
+      if (evt?.eventType === "menu" || evt?.eventType === "back") {
+        handleCancel();
+      }
+    });
+
+    // When visible on tvOS, enable JS handling of the Menu key; disable when not visible
+    useEffect(() => {
+      if (Platform.isTV && Platform.OS === "ios") {
+        try {
+          if (visible) {
+            TVEventControl.enableTVMenuKey?.();
+          } else {
+            TVEventControl.disableTVMenuKey?.();
+          }
+        } catch {}
+        return () => {
+          try {
+            TVEventControl.disableTVMenuKey?.();
+          } catch {}
+        };
+      }
+    }, [visible]);
 
     // Simple animation when becoming visible
     useEffect(() => {
@@ -431,10 +459,7 @@ export const ModalActionSheet = forwardRef<ActionSheetRef, ActionSheetProps>(
         transparent
         visible={visible}
         animationType='none'
-        onRequestClose={() => {
-          // Don't call handleCancel here as it might cause loops
-          // Instead, let the BackHandler or explicit button presses handle cancellation
-        }}
+        onRequestClose={handleCancel}
         statusBarTranslucent
       >
         <View style={{ flex: 1 }}>
