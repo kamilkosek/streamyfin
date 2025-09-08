@@ -1,7 +1,6 @@
 import "@/augmentations";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Platform } from "react-native";
-import { useTVKeyLogger } from "@/hooks/useTVKeyLogger";
 import i18n from "@/i18n";
 import { DownloadProvider } from "@/providers/DownloadProvider";
 import {
@@ -236,18 +235,6 @@ function Layout() {
   const [api] = useAtom(apiAtom);
   const appState = useRef(AppState.currentState);
   const segments = useSegments();
-
-  // Enable TV key logging with drawer opening functionality
-  useTVKeyLogger({
-    enabled: true,
-    onLeftmostDetected: () => {
-      if (Platform.isTV) {
-        console.log("[Layout] Triggering TV drawer open");
-        const { DeviceEventEmitter } = require("react-native");
-        DeviceEventEmitter.emit("openTVDrawer");
-      }
-    },
-  });
 
   useEffect(() => {
     i18n.changeLanguage(

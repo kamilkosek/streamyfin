@@ -37,8 +37,8 @@ export function useRemoteControl({
 }: UseRemoteControlProps) {
   const remoteScrubProgress = useSharedValue<number | null>(null);
   const isRemoteScrubbing = useSharedValue(false);
-  const [showRemoteBubble, setShowRemoteBubble] = useState(false);
-  const [longPressScrubMode, setLongPressScrubMode] = useState<
+  const [showRemoteBubble, _setShowRemoteBubble] = useState(false);
+  const [longPressScrubMode, _setLongPressScrubMode] = useState<
     "FF" | "RW" | null
   >(null);
   const [isSliding, setIsSliding] = useState(false);
@@ -47,11 +47,11 @@ export function useRemoteControl({
   const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-  const SCRUB_INTERVAL = isVlc
+  const _SCRUB_INTERVAL = isVlc
     ? CONTROLS_CONSTANTS.SCRUB_INTERVAL_MS
     : CONTROLS_CONSTANTS.SCRUB_INTERVAL_TICKS;
 
-  const updateTime = useCallback(
+  const _updateTime = useCallback(
     (progressValue: number) => {
       const progressInTicks = isVlc ? msToTicks(progressValue) : progressValue;
       const progressInSeconds = Math.floor(ticksToSeconds(progressInTicks));
@@ -65,64 +65,41 @@ export function useRemoteControl({
 
   useTVEventHandler((evt) => {
     if (!evt) return;
-
+    if (__DEV__)
+      console.log("userRemoteControl - show controls: ", showControls);
+    if (!showControls) {
+      toggleControls();
+      return;
+    }
     switch (evt.eventType) {
       case "longLeft": {
-        setLongPressScrubMode((prev) => (!prev ? "RW" : null));
         break;
       }
       case "longRight": {
-        setLongPressScrubMode((prev) => (!prev ? "FF" : null));
         break;
       }
       case "left":
       case "right": {
-        isRemoteScrubbing.value = true;
-        setShowRemoteBubble(true);
-
-        const direction = evt.eventType === "left" ? -1 : 1;
-        const base = remoteScrubProgress.value ?? progress.value;
-        const updated = Math.max(
-          min.value,
-          Math.min(max.value, base + direction * SCRUB_INTERVAL),
-        );
-        remoteScrubProgress.value = updated;
-        const progressInTicks = isVlc ? msToTicks(updated) : updated;
-        calculateTrickplayUrl(progressInTicks);
-        updateTime(updated);
         break;
       }
       case "select": {
-        if (isRemoteScrubbing.value && remoteScrubProgress.value != null) {
-          progress.value = remoteScrubProgress.value;
-
-          const seekTarget = isVlc
-            ? Math.max(0, remoteScrubProgress.value)
-            : Math.max(0, ticksToSeconds(remoteScrubProgress.value));
-
-          seek(seekTarget);
-          if (isPlaying) play();
-
-          isRemoteScrubbing.value = false;
-          remoteScrubProgress.value = null;
-          setShowRemoteBubble(false);
-        } else {
-          togglePlay();
-        }
+        break;
+      }
+      case "playPause": {
+        togglePlay();
         break;
       }
       case "down":
+        console.log("userRemoteControl - down");
+        break;
       case "up":
-        // cancel scrubbing on other directions
-        isRemoteScrubbing.value = false;
-        remoteScrubProgress.value = null;
-        setShowRemoteBubble(false);
+        console.log("userRemoteControl - up");
         break;
       default:
         break;
     }
 
-    if (!showControls) toggleControls();
+    // Always try to show controls if they're not shown
   });
 
   useEffect(() => {
