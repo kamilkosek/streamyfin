@@ -71,7 +71,7 @@ export default function search() {
 
   const [api] = useAtom(apiAtom);
 
-  const [settings, updateSettings] = useSettings(null);
+  const { settings, updateSettings } = useSettings(null);
   if (__DEV__) console.log("Jellyseerr URL:", settings.jellyseerrServerUrl);
   const { jellyseerrApi } = useJellyseerr(settings, updateSettings);
   const [jellyseerrOrderBy, setJellyseerrOrderBy] =
