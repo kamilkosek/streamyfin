@@ -1,7 +1,8 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useRouter } from "expo-router";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { View, type ViewProps } from "react-native";
 import { Text } from "@/components/common/Text";
+import { FocusableItem } from "../common/FocusableItem";
 
 interface Props extends ViewProps {
   item: BaseItemDto;
@@ -16,7 +17,7 @@ export const EpisodeTitleHeader: React.FC<Props> = ({ item, ...props }) => {
         {item?.Name}
       </Text>
       <View className='flex flex-row items-center mb-1'>
-        <TouchableOpacity
+        <FocusableItem
           onPress={() => {
             router.push(
               `/(auth)/series/${item.SeriesId}?seasonIndex=${item?.ParentIndexNumber}`,
@@ -24,7 +25,7 @@ export const EpisodeTitleHeader: React.FC<Props> = ({ item, ...props }) => {
           }}
         >
           <Text className='opacity-50'>{item?.SeasonName}</Text>
-        </TouchableOpacity>
+        </FocusableItem>
 
         <Text className='opacity-50 mx-2'>{"—"}</Text>
         <Text className='opacity-50'>{`Episode ${item.IndexNumber}`}</Text>
