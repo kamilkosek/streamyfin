@@ -53,7 +53,7 @@ export const useFocusAnimation = (options?: {
     if (Platform.isTV) {
       setIsFocused(true);
       if (enableAnimation) {
-        scale.value = withSpring(1.16, {
+        scale.value = withSpring(1.1, {
           damping: 15,
           stiffness: 300,
         });
