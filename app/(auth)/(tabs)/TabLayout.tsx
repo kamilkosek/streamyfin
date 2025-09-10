@@ -25,7 +25,7 @@ export const NativeTabs = withLayoutContext<
 >(Navigator);
 
 export function TabLayout() {
-  const [settings] = useSettings();
+  const { settings } = useSettings();
   const { t } = useTranslation();
 
   return (
