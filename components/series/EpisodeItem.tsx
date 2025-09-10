@@ -1,5 +1,6 @@
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useRouter, useSegments } from "expo-router";
+import { t } from "i18next";
 import { useCallback } from "react";
 import { Platform } from "react-native";
 import { useFavorite } from "@/hooks/useFavorite";
@@ -43,23 +44,25 @@ export const EpisodeItem: React.FC<Props> = ({
       return;
 
     showActionSheet({
-      title: "Media Options",
-      message: "Choose an action for this item",
+      title: t("action_sheet.media_options.media_options"),
+      message: t("action_sheet.media_options.description"),
       options: [
         {
-          title: "Mark as Played",
+          title: t("action_sheet.media_options.mark_as_played"),
           onPress: async () => {
             await markAsPlayedStatus(true);
           },
         },
         {
-          title: "Mark as Not Played",
+          title: t("action_sheet.media_options.mark_as_unplayed"),
           onPress: async () => {
             await markAsPlayedStatus(false);
           },
         },
         {
-          title: isFavorite ? "Unmark as Favorite" : "Mark as Favorite",
+          title: isFavorite
+            ? t("action_sheet.media_options.remove_from_favorites")
+            : t("action_sheet.media_options.add_to_favorites"),
           onPress: () => {
             toggleFavorite();
           },
