@@ -104,7 +104,7 @@ export default function DirectPlayer() {
     /** Playback position in ticks. */
     playbackPosition?: string;
   }>();
-  const [settings, updateSettings] = useSettings(api);
+  const { settings, updateSettings } = useSettings();
 
   const offline = offlineStr === "true";
   const playbackManager = usePlaybackManager();
