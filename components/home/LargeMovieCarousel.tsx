@@ -31,7 +31,7 @@ export const LargeMovieCarousel: React.FC<Props> = ({
   hasTVPreferredFocus,
   ...props
 }) => {
-  const [settings] = useSettings(null);
+  const { settings } = useSettings(null);
 
   const ref = React.useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
