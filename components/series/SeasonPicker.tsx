@@ -188,7 +188,7 @@ export const SeasonPicker: React.FC<Props> = ({ item }) => {
         className='px-4 flex flex-col mt-4'
         style={{ overflow: Platform.isTV ? "visible" : "hidden" }}
       >
-        {isFetching ? (
+        {isPending ? (
           <View
             style={{
               minHeight: 144 * nrOfEpisodes,
