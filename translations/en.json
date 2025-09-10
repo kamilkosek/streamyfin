@@ -393,7 +393,11 @@
     "no_data_available": "No data available",
     "index": "Index:",
     "continue_watching": "Continue Watching",
-    "go_back": "Go back"
+    "go_back": "Go back",
+    "select_playback_method": "Select playback method",
+    "select_playback_method_description": "Choose where to play the media",
+    "chromecast": "Chromecast",
+    "device": "Device"
   },
   "item_card": {
     "next_up": "Next up",
@@ -496,5 +500,16 @@
     "library": "Library",
     "custom_links": "Custom Links",
     "favorites": "Favorites"
+  },
+  "action_sheet": {
+    "cancel": "Cancel",
+    "media_options": {
+      "media_options": "Media Options",
+      "description": "Choose an action for this item",
+      "mark_as_played": "Mark as Played",
+      "mark_as_unplayed": "Mark as Unplayed",
+      "add_to_favorites": "Add to Favorites",
+      "remove_from_favorites": "Remove from Favorites"
+    }
   }
 }

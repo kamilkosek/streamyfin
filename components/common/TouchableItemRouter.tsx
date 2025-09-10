@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { BaseItemDto } from "@jellyfin/sdk/lib/generated-client/models";
 import { useRouter, useSegments } from "expo-router";
+import { t } from "i18next";
 import { type PropsWithChildren, useCallback } from "react";
 import {
   Platform,
@@ -82,11 +83,11 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
       return;
 
     showActionSheet({
-      title: "Media Options",
-      message: "Choose an action for this item",
+      title: t("action_sheet.media_options.media_options"),
+      message: t("action_sheet.media_options.description"),
       options: [
         {
-          title: "Mark as Played",
+          title: t("action_sheet.media_options.mark_as_played"),
           onPress: async () => {
             await markAsPlayedStatus(true);
           },
@@ -95,7 +96,7 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
           ),
         },
         {
-          title: "Mark as Not Played",
+          title: t("action_sheet.media_options.mark_as_unplayed"),
           onPress: async () => {
             await markAsPlayedStatus(false);
           },
@@ -104,7 +105,9 @@ export const TouchableItemRouter: React.FC<PropsWithChildren<Props>> = ({
           ),
         },
         {
-          title: isFavorite ? "Unmark as Favorite" : "Mark as Favorite",
+          title: isFavorite
+            ? t("action_sheet.media_options.remove_from_favorites")
+            : t("action_sheet.media_options.add_to_favorites"),
           onPress: () => {
             toggleFavorite();
           },

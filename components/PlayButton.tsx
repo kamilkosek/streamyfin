@@ -104,11 +104,11 @@ export const PlayButton: React.FC<Props> = ({
     }
 
     showActionSheet({
-      title: "Select Playback Method",
-      message: "Choose where to play the media",
+      title: t("player.select_playback_method"),
+      message: t("player.select_playback_method_description"),
       options: [
         {
-          title: "Chromecast",
+          title: t("player.chromecast"),
           onPress: async () => {
             if (!api) return;
             const currentTitle = mediaStatus?.mediaInfo?.metadata?.title;
@@ -248,7 +248,7 @@ export const PlayButton: React.FC<Props> = ({
           },
         },
         {
-          title: "Device",
+          title: t("player.device"),
           onPress: () => {
             goToPlayer(queryString);
           },
