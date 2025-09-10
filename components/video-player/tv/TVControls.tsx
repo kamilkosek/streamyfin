@@ -268,7 +268,7 @@ export const TVControls: React.FC<TVControlsProps> = ({
     if (!showControls || isSliding || episodesOpen || !isPlaying) return;
     hideTimerRef.current = setTimeout(() => {
       setShowControls(false);
-    }, CONTROLS_CONSTANTS.TIMEOUT_TV);
+    }, CONTROLS_CONSTANTS.TIMEOUT);
   }, [
     clearHideTimer,
     showControls,
