@@ -1,5 +1,5 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import { Slot, usePathname, useRouter } from "expo-router";
+import { Slot, usePathname, useRouter, useSegments } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -23,6 +23,7 @@ export function TVDrawerLayout() {
   const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
+  const segments = useSegments();
   const [isSidebarFocused, setIsSidebarFocused] = useState(false); // Start collapsed
   const blurTimeoutRef = useRef<any>(null);
   // Suppress expand/collapse thrash that happens during navigation-induced focus churn
@@ -40,6 +41,14 @@ export function TVDrawerLayout() {
   );
   const prevSidebarFocusedRef = useRef<boolean>(false);
   const [focusRemountToken, setFocusRemountToken] = useState<number>(0);
+
+  // Dev logger helper
+  const devLog = useCallback((...args: any[]) => {
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log("[TVDrawer]", ...args);
+    }
+  }, []);
 
   const menuItems: MenuItem[] = [
     {
@@ -77,24 +86,63 @@ export function TVDrawerLayout() {
 
   const navigateToRoute = useCallback(
     (route: string) => {
+      devLog("navigateToRoute", { from: pathname, to: route });
       router.push(route as any);
     },
-    [router],
+    [router, pathname, devLog],
   );
 
   const isRouteActive = useCallback(
     (route: string) => {
-      // More robust route matching for the TV layout
-      const routeSegments = route.split("/").filter(Boolean);
+      // Segment-aware active detection that prefers the deepest matching menu key
+      const norm = (p: string) =>
+        p
+          .split("/")
+          .filter(Boolean)
+          .map((s) => s.replace(/[()]/g, ""));
 
-      // Check if the pathname contains the tab name from the route
-      const tabName = routeSegments[routeSegments.length - 1]?.replace(
-        /[()]/g,
-        "",
-      );
-      return tabName && pathname.includes(tabName);
+      const routeSegs = norm(route);
+      const itemKey = routeSegs[routeSegs.length - 1];
+
+      const segsFromHook = Array.isArray(segments)
+        ? (segments as string[])
+        : [];
+      const segsNormalized = segsFromHook.map((s) => s.replace(/[()]/g, ""));
+      const pathSegs =
+        segsNormalized.length > 0 ? segsNormalized : norm(pathname || "");
+      const tabsIdx = pathSegs.indexOf("tabs");
+      const afterTabs = tabsIdx >= 0 ? pathSegs.slice(tabsIdx + 1) : pathSegs;
+
+      // Build a set of known menu keys
+      const menuKeys = new Set(menuItems.map((m) => m.key));
+
+      // Choose the deepest segment that matches a menu key; fallback to first; default home
+      let activeKey = "home";
+      for (let i = afterTabs.length - 1; i >= 0; i--) {
+        const seg = afterTabs[i];
+        if (menuKeys.has(seg)) {
+          activeKey = seg;
+          break;
+        }
+      }
+      if (activeKey === "home" && afterTabs[0]) {
+        // If no segment matched, use first segment after tabs as a coarse fallback
+        activeKey = menuKeys.has(afterTabs[0]) ? afterTabs[0] : "home";
+      }
+      devLog("isRouteActive", {
+        route,
+        pathname,
+        segments,
+        routeSegs,
+        pathSegs,
+        afterTabs,
+        itemKey,
+        activeKey,
+        result: itemKey === activeKey,
+      });
+      return itemKey === activeKey;
     },
-    [pathname],
+    [pathname, segments, menuItems, devLog],
   );
 
   const handleSidebarFocus = useCallback((itemKey?: string) => {
@@ -115,6 +163,7 @@ export function TVDrawerLayout() {
     if (itemKey) setLastFocusedKey(itemKey);
     // We've re-entered the sidebar, so clear any pending restore hint
     setRestoreFocusOnNextEnter(false);
+    devLog("onFocus sidebar item", { itemKey, pathname });
   }, []);
 
   const handleSidebarBlur = useCallback(() => {
@@ -134,6 +183,7 @@ export function TVDrawerLayout() {
       setRestoreFocusOnNextEnter(true);
       blurTimeoutRef.current = null;
     }, 250); // Slightly longer delay for smoother, less jittery collapse
+    devLog("onBlur sidebar", { pathname });
   }, []);
 
   const handleSidebarPress = useCallback(
@@ -143,8 +193,9 @@ export function TVDrawerLayout() {
 
       // Suppress focus-driven expand during the route change so we don't jitter
       suppressFocusToggleUntilRef.current = Date.now() + 600; // short guard window
+      devLog("onPress sidebar item", { to: route });
     },
-    [navigateToRoute],
+    [navigateToRoute, devLog],
   );
 
   useEffect(() => {
@@ -155,11 +206,13 @@ export function TVDrawerLayout() {
     ) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
+    devLog("mount TVDrawerLayout");
     return () => {
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current);
         blurTimeoutRef.current = null;
       }
+      devLog("unmount TVDrawerLayout");
     };
   }, []);
 
@@ -179,7 +232,8 @@ export function TVDrawerLayout() {
         const timer = setTimeout(() => {
           // Suppress any focus churn from this programmatic navigation
           suppressFocusToggleUntilRef.current = Date.now() + 600;
-          router.replace("/(auth)/(tabs)/(home)");
+          router.replace("/(auth)/(tabs)/(home)" as any);
+          devLog("replace to home on TV root");
         }, 50);
 
         return () => clearTimeout(timer);
@@ -193,6 +247,7 @@ export function TVDrawerLayout() {
       suppressFocusToggleUntilRef.current,
       Date.now() + 400,
     );
+    devLog("pathname changed", pathname);
   }, [pathname]);
 
   // Detect re-entry into the sidebar and apply preferred focus just once
@@ -279,6 +334,9 @@ export function TVDrawerLayout() {
                   }`}
                   onPress={() => {
                     setLastFocusedKey(item.key);
+                    // Keep focus on the sidebar item so visual state matches Settings
+                    setPreferredFocusKey(item.key);
+                    setFocusRemountToken((c) => c + 1);
                     handleSidebarPress(item.route);
                   }}
                   onFocus={() => handleSidebarFocus(item.key)}
