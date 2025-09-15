@@ -15,7 +15,7 @@ import { useAtom } from "jotai";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, View } from "react-native";
+import { FlatList, Platform, View } from "react-native";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
 import { FilterButton } from "@/components/filters/FilterButton";
@@ -184,12 +184,16 @@ const page: React.FC = () => {
       >
         <View
           style={{
-            alignSelf:
-              index % 3 === 0
-                ? "flex-end"
-                : (index + 1) % 3 === 0
-                  ? "flex-start"
-                  : "center",
+            alignSelf: (() => {
+              const columns = Platform.isTV
+                ? 6
+                : orientation === ScreenOrientation.Orientation.PORTRAIT_UP
+                  ? 3
+                  : 5;
+              if (index % columns === 0) return "flex-end";
+              if ((index + 1) % columns === 0) return "flex-start";
+              return "center";
+            })(),
             width: "89%",
           }}
         >
@@ -395,7 +399,11 @@ const page: React.FC = () => {
       keyExtractor={keyExtractor}
       estimatedItemSize={255}
       numColumns={
-        orientation === ScreenOrientation.Orientation.PORTRAIT_UP ? 3 : 5
+        Platform.isTV
+          ? 6
+          : orientation === ScreenOrientation.Orientation.PORTRAIT_UP
+            ? 3
+            : 5
       }
       onEndReached={() => {
         if (hasNextPage) {
