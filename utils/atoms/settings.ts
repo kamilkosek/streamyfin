@@ -172,6 +172,17 @@ export type Settings = {
   enableLeftSideBrightnessSwipe: boolean;
   enableRightSideVolumeSwipe: boolean;
   usePopularPlugin: boolean;
+  // Optional TV-only sidebar links (ignored when empty)
+  tvSidebarLinks?: TvSidebarLink[];
+};
+
+export type TvSidebarLinkType = "collection" | "library";
+
+export type TvSidebarLink = {
+  name: string;
+  type: TvSidebarLinkType;
+  id: string;
+  icon?: string; // URL or asset reference (optional)
 };
 
 export interface Lockable<T> {
