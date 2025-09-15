@@ -8,7 +8,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useTVEventHandler, View } from "react-native";
+import {
+  BackHandler,
+  Platform,
+  TVEventControl,
+  useTVEventHandler,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -288,6 +294,41 @@ export const TVControls: React.FC<TVControlsProps> = ({
     return () => clearHideTimer();
   }, [scheduleHide, clearHideTimer]);
 
+  // Android TV: intercept hardware back to hide overlay instead of navigating back
+  useEffect(() => {
+    const onBackPress = () => {
+      if (showControls) {
+        setShowControls(false);
+        return true; // consume event
+      }
+      return false; // allow default navigation
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [showControls, setShowControls]);
+
+  // tvOS: disable the Menu key default back behavior while overlay is visible
+  useEffect(() => {
+    if (Platform.isTV && Platform.OS === "ios") {
+      try {
+        if (showControls) {
+          TVEventControl.disableTVMenuKey?.();
+        } else {
+          TVEventControl.enableTVMenuKey?.();
+        }
+      } catch {
+        // no-op: API not available on this platform/runtime
+      }
+      return () => {
+        try {
+          TVEventControl.enableTVMenuKey?.();
+        } catch {
+          // ignore
+        }
+      };
+    }
+  }, [showControls]);
+
   const min = useSharedValue(0);
   const max = useSharedValue(item.RunTimeTicks || 0);
   const { currentTime, remainingTime } = useVideoTime({
@@ -343,6 +384,7 @@ export const TVControls: React.FC<TVControlsProps> = ({
       "select",
       "playPause",
       "menu",
+      "back",
       "rewind",
       "fastForward",
     ]);
@@ -358,9 +400,14 @@ export const TVControls: React.FC<TVControlsProps> = ({
       return;
     }
 
-    // When visible, only handle playPause here; rest handled by focus chain
+    // When visible, intercept back/menu to hide overlay; handle play/pause here; rest handled by focus chain
     if (type === "playPause") {
       togglePlay();
+      return;
+    }
+    if (type === "menu" || type === "back") {
+      setShowControls(false);
+      return;
     }
   });
 
