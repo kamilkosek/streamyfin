@@ -35,6 +35,86 @@ import {
   tagsFilterAtom,
   yearFilterAtom,
 } from "@/utils/atoms/filters";
+import { useSettings } from "@/utils/atoms/settings";
+
+// Top-level renderer for a TV custom section in a collection
+const CollectionSectionRenderer: React.FC<{
+  section: any;
+  index: number;
+  collectionId: string;
+}> = ({ section, index, collectionId }) => {
+  const [api] = useAtom(apiAtom);
+  const [user] = useAtom(userAtom);
+  const resolver = section.items;
+  const displayTitle = section.title || `Section ${index + 1}`;
+  const qKey = [
+    "tvSidebarSectionCollection",
+    collectionId,
+    displayTitle,
+    resolver?.sortBy?.join("-") || "",
+    resolver?.sortOrder?.join("-") || "",
+    resolver?.includeItemTypes?.join("-") || "",
+    String(resolver?.limit || ""),
+  ];
+  const { data: sectionItems } = useQuery({
+    queryKey: qKey,
+    queryFn: async () => {
+      if (!api || !user?.Id || !resolver) return [] as BaseItemDto[];
+      const response = await getItemsApi(api).getItems({
+        userId: user.Id,
+        parentId: collectionId,
+        sortBy: resolver.sortBy as any,
+        sortOrder: resolver.sortOrder as any,
+        includeItemTypes: resolver.includeItemTypes as any,
+        limit: resolver.limit ?? 20,
+        recursive: true,
+        fields: ["PrimaryImageAspectRatio"],
+        enableImageTypes: ["Primary", "Thumb", "Backdrop"],
+      });
+      return response.data.Items || [];
+    },
+    staleTime: 60 * 1000,
+    enabled: !!api && !!user?.Id && !!resolver,
+  });
+  if (!resolver) return null;
+  const items = sectionItems || [];
+  return (
+    <View className='mb-6'>
+      {displayTitle ? (
+        <Text className='text-xl font-bold mb-2 px-4'>{displayTitle}</Text>
+      ) : null}
+      <FlashList
+        horizontal={section.orientation === "horizontal"}
+        // Disable vertical scrolling for nested lists to avoid nested scroll issues
+        // FlashList forwards scrollEnabled to the underlying scroll view
+        scrollEnabled={section.orientation === "horizontal"}
+        estimatedItemSize={250}
+        data={items}
+        keyExtractor={(it: BaseItemDto) => it.Id || Math.random().toString()}
+        renderItem={({ item }) => (
+          <TouchableItemRouter
+            key={item.Id}
+            style={{ width: 180, marginHorizontal: 8 }}
+            item={item}
+          >
+            <View style={{ width: 170 }}>
+              <ItemPoster item={item} />
+              <ItemCardText item={item} />
+            </View>
+          </TouchableItemRouter>
+        )}
+        contentContainerStyle={{ paddingHorizontal: 12 }}
+        ItemSeparatorComponent={() =>
+          section.orientation === "horizontal" ? (
+            <View style={{ width: 4 }} />
+          ) : (
+            <View style={{ height: 8 }} />
+          )
+        }
+      />
+    </View>
+  );
+};
 
 const page: React.FC = () => {
   const searchParams = useLocalSearchParams();
@@ -51,9 +131,32 @@ const page: React.FC = () => {
 
   const [selectedGenres, setSelectedGenres] = useAtom(genreFilterAtom);
   const [selectedYears, setSelectedYears] = useAtom(yearFilterAtom);
+
   const [selectedTags, setSelectedTags] = useAtom(tagsFilterAtom);
   const [sortBy, setSortBy] = useAtom(sortByAtom);
   const [sortOrder, setSortOrder] = useAtom(sortOrderAtom);
+  const { settings } = useSettings();
+
+  // Detect if this collectionId is provided as a tvSidebarLink with custom sections (TV only)
+  const tvCustomSections = useMemo(() => {
+    if (!Platform.isTV) return undefined;
+    const links = settings?.tvSidebarLinks || [];
+    const found = links.find(
+      (l) =>
+        l.type === "collection" &&
+        l.id === collectionId &&
+        Array.isArray(l.sections),
+    );
+    if (__DEV__ && found) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "[TVCollection] using custom sections",
+        collectionId,
+        found.sections?.length,
+      );
+    }
+    return found;
+  }, [settings?.tvSidebarLinks, collectionId]);
 
   const { data: collection } = useQuery({
     queryKey: ["collection", collectionId],
@@ -355,6 +458,18 @@ const page: React.FC = () => {
           renderItem={({ item }) => item.component}
           keyExtractor={(item) => item.key}
         />
+        {tvCustomSections?.sections?.length ? (
+          <View style={{ paddingBottom: 12 }}>
+            {tvCustomSections.sections.map((section, idx) => (
+              <CollectionSectionRenderer
+                key={`${collectionId}-sec-${idx}`}
+                section={section}
+                index={idx}
+                collectionId={collectionId}
+              />
+            ))}
+          </View>
+        ) : null}
       </View>
     ),
     [
@@ -372,10 +487,13 @@ const page: React.FC = () => {
       sortOrder,
       setSortOrder,
       isFetching,
+      tvCustomSections?.sections,
     ],
   );
 
   if (!collection) return null;
+
+  // When custom sections are defined for TV, render them above the infinite list (in ListHeaderComponent)
 
   return (
     <FlashList
