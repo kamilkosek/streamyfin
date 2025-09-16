@@ -183,6 +183,10 @@ export type TvSidebarLink = {
   type: TvSidebarLinkType;
   id: string;
   icon?: string; // URL or asset reference (optional)
+  // Optional custom sections (TV-only) that mirror home page section structure
+  // If provided, the target library/collection screen on TV should render these
+  // instead of (or before) the default infinite list.
+  sections?: HomeSection[];
 };
 
 export interface Lockable<T> {
