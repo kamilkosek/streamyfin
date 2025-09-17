@@ -115,14 +115,15 @@ export const VideoProvider: React.FC<VideoProviderProps> = ({
       mediaSource?.TranscodingUrl &&
       !onTextBasedSubtitle;
 
-    console.log("Set player params", index, serverIndex);
+    console.log("Set player params", type, index, serverIndex);
+
     if (shouldChangePlayerParams) {
       setPlayerParams({
         chosenSubtitleIndex: serverIndex.toString(),
       });
       return;
     }
-    setTrack?.(index);
+    setTrack?.(serverIndex);
     router.setParams({
       [paramKey]: serverIndex.toString(),
     });
