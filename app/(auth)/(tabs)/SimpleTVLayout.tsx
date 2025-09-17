@@ -440,7 +440,9 @@ export function TVDrawerLayout() {
       return (
         <TouchableOpacity
           key={elementKey}
-          className={`flex-row items-center justify-start py-0 px-4 pl-8 rounded-lg relative bg-transparent min-h-[52px] w-full ${
+          className={`flex-row items-center ${
+            isExpanded ? "justify-start px-3" : "justify-center px-0"
+          } rounded-lg relative bg-transparent min-h-[52px] w-full ${
             isActive ? "bg-purple-600/15" : ""
           }`}
           onPress={() => onPressItem(item)}
@@ -452,11 +454,17 @@ export function TVDrawerLayout() {
           accessibilityLabel={item.titleKey ? t(item.titleKey) : item.title}
           accessibilityRole='button'
         >
-          <View className='mr-3'>
+          <View
+            style={
+              isExpanded
+                ? { width: 36, alignItems: "center", marginRight: 12 }
+                : { flex: 1, alignItems: "center" }
+            }
+          >
             {item.imageIconUri ? (
               <Image
                 source={{ uri: item.imageIconUri }}
-                style={{ width: 28, height: 28, borderRadius: 4 }}
+                style={{ width: 28, height: 28, borderRadius: 6 }}
                 resizeMode='cover'
               />
             ) : (
@@ -523,23 +531,30 @@ export function TVDrawerLayout() {
       {/* Focus-Responsive Sidebar - single mounted tree to avoid remount/focus jumps */}
       <View
         className={`bg-neutral-800 border-r border-neutral-700 shadow-2xl ${
-          isExpanded ? "w-48" : "w-18"
+          isExpanded ? "w-40" : "w-14"
         }`}
       >
         <View className='flex-1 pt-0'>
           {/* Header - keep title mounted but hide when collapsed */}
           <View
             className={`flex-row items-center border-b-2 border-neutral-700 mb-4 h-16 ${
-              isExpanded
-                ? "justify-start px-4 py-0"
-                : "justify-center px-2 py-0"
+              isExpanded ? "justify-start px-3" : "justify-center px-0"
             }`}
           >
-            <Image
-              source={require("@/assets/images/icon-android-plain.png")}
-              style={{ width: 40, height: 40 }}
-              accessibilityLabel='Streamyfin icon'
-            />
+            <View
+              style={
+                isExpanded
+                  ? { width: 36, alignItems: "flex-start" }
+                  : { flex: 1, alignItems: "center" }
+              }
+            >
+              <Image
+                source={require("@/assets/images/icon-android-plain.png")}
+                style={{ width: 36, height: 36, borderRadius: 6 }}
+                accessibilityLabel='Streamyfin icon'
+                resizeMode='contain'
+              />
+            </View>
             {/* <Text
               className={`text-xl font-bold text-purple-600 ml-3 ${
                 !isSidebarFocused ? "opacity-0 w-0 h-0" : ""
