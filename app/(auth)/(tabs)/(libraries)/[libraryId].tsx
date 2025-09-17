@@ -14,7 +14,7 @@ import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useAtom } from "jotai";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, useWindowDimensions, View } from "react-native";
+import { FlatList, Platform, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
@@ -244,6 +244,7 @@ const Page = () => {
           marginBottom: 4,
         }}
         item={item}
+        {...(Platform.isTV && index === 0 ? { hasTVPreferredFocus: true } : {})}
       >
         <View
           style={{
