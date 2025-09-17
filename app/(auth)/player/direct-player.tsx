@@ -45,6 +45,13 @@ import { generateDeviceProfile } from "@/utils/profiles/native";
 import { msToTicks, ticksToSeconds } from "@/utils/time";
 
 export default function DirectPlayer() {
+  const devLog = useCallback((...args: any[]) => {
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log("[DirectPlayer]", ...args);
+    }
+  }, []);
+
   const videoRef = useRef<VlcPlayerViewRef>(null);
   const user = useAtomValue(userAtom);
   const api = useAtomValue(apiAtom);
@@ -595,16 +602,7 @@ export default function DirectPlayer() {
       // Treat end as within last 1 second
       const thresholdMs = 1000;
       const isEnd = current >= total - thresholdMs;
-      if (__DEV__)
-        console.log("[TV][end] check", {
-          current,
-          total,
-          thresholdMs,
-          isEnd,
-          itemId: item?.Id,
-          itemType: item?.Type,
-          hasNextItem: !!nextItem,
-        });
+
       if (isEnd) {
         endHandledRef.current = true;
         // Best-effort: mark played
@@ -837,21 +835,26 @@ export default function DirectPlayer() {
 
   const seek = useCallback((position: number) => {
     videoRef.current?.seekTo?.(position);
+    devLog("seek: Seeking to position", position);
   }, []);
   const getAudioTracks = useCallback(async () => {
+    devLog("getAudioTracks: Fetching audio tracks");
     return videoRef.current?.getAudioTracks?.() || null;
   }, []);
 
   const getSubtitleTracks = useCallback(async () => {
+    devLog("getSubtitleTracks: Fetching subtitle tracks");
     return videoRef.current?.getSubtitleTracks?.() || null;
   }, []);
 
   const setSubtitleTrack = useCallback((index: number) => {
+    devLog("setSubtitleTrack: Setting subtitle track:", index);
     videoRef.current?.setSubtitleTrack?.(index);
   }, []);
 
   const setSubtitleURL = useCallback((url: string, _customName?: string) => {
     // Note: VlcPlayer type only expects url parameter
+    devLog("setSubtitleURL: Setting external subtitle URL:", url);
     videoRef.current?.setSubtitleURL?.(url);
   }, []);
 
@@ -925,8 +928,8 @@ export default function DirectPlayer() {
         width: "100%",
       }}
       focusable={true}
-      isTVSelectable={true}
-      hasTVPreferredFocus={true}
+      // isTVSelectable={true}
+      // hasTVPreferredFocus={true}
     >
       <View
         style={{
