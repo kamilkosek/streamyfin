@@ -56,6 +56,50 @@ export interface TVSliderProps {
 
 // Avoid helper functions in UI worklets; use inline Math.min/Math.max where needed.
 
+type SegmentOverlayProps = {
+  s: Segment;
+  idx: number;
+  min: SharedValue<number>;
+  max: SharedValue<number>;
+  width: SharedValue<number>;
+  color?: string;
+};
+
+const SegmentOverlay = ({ s, min, max, width, color }: SegmentOverlayProps) => {
+  const segStyle = useAnimatedStyle(() => {
+    const range = max.value - min.value;
+    if (range <= 0 || !Number.isFinite(range)) {
+      return { width: 0 } as const;
+    }
+    const startNorm = (s.start - min.value) / range;
+    const endNorm = (s.end - min.value) / range;
+    const clampedStart = Math.min(1, Math.max(0, startNorm));
+    const clampedEnd = Math.min(1, Math.max(0, endNorm));
+    const segWidthPct = Math.max(0, clampedEnd - clampedStart);
+    const leftPx = width.value * clampedStart;
+    const widthPx = width.value * segWidthPct;
+    return {
+      left: leftPx,
+      width: widthPx,
+    } as const;
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          backgroundColor: color ?? "rgba(255,255,255,0.15)",
+        },
+        segStyle,
+      ]}
+      pointerEvents='none'
+    />
+  );
+};
+
 export const TVSlider = memo(function TVSlider({
   progress,
   minimumValue,
@@ -250,7 +294,7 @@ export const TVSlider = memo(function TVSlider({
         try {
           onKeyDown?.(e);
         } catch (error) {
-          console.warn('TVSlider onKeyDown error:', error);
+          console.warn("TVSlider onKeyDown error:", error);
         }
       }}
       onFocus={() => {
@@ -284,30 +328,17 @@ export const TVSlider = memo(function TVSlider({
         {/* played layer */}
         <Animated.View style={minStyle} />
         {/* segments overlay */}
-        {segments.map((s, idx) => {
-          const range = max.value - min.value;
-          if (range <= 0) return null;
-          const startNorm = (s.start - min.value) / range;
-          const endNorm = (s.end - min.value) / range;
-          const startPct = Math.min(1, Math.max(0, startNorm)) * 100;
-          const endPct = Math.min(1, Math.max(0, endNorm)) * 100;
-          const w = Math.max(0, endPct - startPct);
-          if (!Number.isFinite(w) || w <= 0) return null;
-          return (
-            <View
-              key={`${idx}-${s.start}-${s.end}`}
-              style={{
-                position: "absolute",
-                left: `${startPct}%`,
-                width: `${w}%`,
-                top: 0,
-                bottom: 0,
-                backgroundColor: s.color ?? "rgba(255,255,255,0.15)",
-              }}
-              pointerEvents='none'
-            />
-          );
-        })}
+        {segments.map((s, idx) => (
+          <SegmentOverlay
+            key={`${idx}-${s.start}-${s.end}`}
+            s={s}
+            min={min}
+            max={max}
+            width={width}
+            color={s.color}
+            idx={idx}
+          />
+        ))}
       </View>
 
       {/* focus ring */}
