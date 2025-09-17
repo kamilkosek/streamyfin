@@ -262,13 +262,17 @@ export const ItemContent: React.FC<ItemContentProps> = React.memo(
                 item={item}
                 loading={loading}
                 isOffline={isOffline}
+                className={`mb-4 ${Platform.isTV ? "mt-4" : ""}`}
               />
             )}
 
-            {!isOffline && (
+            {!isOffline && !Platform.isTV && (
               <ItemTechnicalDetails source={selectedOptions.mediaSource} />
             )}
-            <OverviewText text={item.Overview} className='px-4 mb-4' />
+            <OverviewText
+              text={item.Overview}
+              className={`px-4 mb-4 ${Platform.isTV ? "mt-4" : ""}`}
+            />
 
             {item.Type !== "Program" && (
               <>

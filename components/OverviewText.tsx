@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { Platform, TouchableOpacity, View, type ViewProps } from "react-native";
 import { Text } from "@/components/common/Text";
 import { tc } from "@/utils/textTools";
 
@@ -18,6 +18,20 @@ export const OverviewText: React.FC<Props> = ({
   const { t } = useTranslation();
 
   if (!text) return null;
+
+  // On TV platforms, always show full content without truncation or toggle
+  if (Platform.isTV) {
+    return (
+      <View className='flex flex-col' {...props}>
+        <Text className='text-lg font-bold mb-2'>
+          {t("item_card.overview")}
+        </Text>
+        <View>
+          <Text>{text}</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className='flex flex-col' {...props}>
