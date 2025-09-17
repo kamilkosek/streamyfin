@@ -1,7 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { Slot, usePathname, useRouter, useSegments } from "expo-router";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FlatList,
@@ -24,6 +24,9 @@ interface MenuItem {
   title?: string; // raw label for dynamic items
   icon?: keyof typeof MaterialIcons.glyphMap; // legacy support
   imageIconUri?: string; // for dynamic items
+  // Derived metadata (for fast active-key checks)
+  routeType?: "base" | "libraries-root" | "library" | "collection";
+  underlyingId?: string;
 }
 
 export function TVDrawerLayout() {
@@ -62,18 +65,18 @@ export function TVDrawerLayout() {
     }
   }, []);
 
-  // Try to fetch plugin settings on mount (and when function identity changes)
+  // Fetch plugin settings once on mount (no runtime updates)
   useEffect(() => {
-    if (Platform.isTV) {
-      (async () => {
-        try {
-          await refreshStreamyfinPluginSettings?.();
-        } catch (e) {
-          devLog("plugin settings refresh error", e);
-        }
-      })();
-    }
-  }, [refreshStreamyfinPluginSettings]);
+    if (!Platform.isTV) return;
+    (async () => {
+      try {
+        await refreshStreamyfinPluginSettings?.();
+      } catch (e) {
+        devLog("plugin settings refresh error", e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const baseBefore: MenuItem[] = [
     {
@@ -81,76 +84,36 @@ export function TVDrawerLayout() {
       route: "/(auth)/(tabs)/(home)",
       titleKey: "tabs.home",
       icon: "home",
+      routeType: "base",
     },
     {
       key: "search",
       route: "/(auth)/(tabs)/(search)",
       titleKey: "tabs.search",
       icon: "search",
+      routeType: "base",
     },
     {
       key: "favorites",
       route: "/(auth)/(tabs)/(favorites)",
       titleKey: "tabs.favorites",
       icon: "favorite",
+      routeType: "base",
     },
     {
       key: "libraries",
       route: "/(auth)/(tabs)/(libraries)",
       titleKey: "tabs.library",
       icon: "video-library",
+      routeType: "libraries-root",
     },
   ];
 
   const rawTvLinks =
     settings?.tvSidebarLinks ?? pluginSettings?.tvSidebarLinks?.value;
-  const dynamicIds = new Set(
-    Array.isArray(rawTvLinks)
-      ? rawTvLinks
-          .filter((l) => !!l && typeof l.id === "string" && l.id.length > 0)
-          .map((l) => l.id)
-      : [],
-  );
-  devLog("dynamicIds", Array.from(dynamicIds));
-  const dynamicTvItems: MenuItem[] = Array.isArray(rawTvLinks)
-    ? rawTvLinks
-        .filter(
-          (l) =>
-            !!l &&
-            typeof l.name === "string" &&
-            typeof l.id === "string" &&
-            l.id.length > 0,
-        )
-        .map((l, idx) => {
-          const route =
-            l.type === "collection"
-              ? `/((auth))/(tabs)/(libraries)/collections/${l.id}`.replace(
-                  "((auth))",
-                  "(auth)",
-                )
-              : l.type === "library"
-                ? `/((auth))/(tabs)/(libraries)/${l.id}`.replace(
-                    "((auth))",
-                    "(auth)",
-                  )
-                : undefined;
-
-          return {
-            key: `tvlink-${l.id || idx}`,
-            route,
-            title: l.name,
-            imageIconUri:
-              l.icon ||
-              getPrimaryImageUrlById({
-                api,
-                id: l.id,
-                width: 64,
-                quality: 90,
-              }) ||
-              undefined,
-          };
-        })
-    : [];
+  const didFreezeDynamicRef = useRef(false);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([...baseBefore]);
+  // Insert baseAfter at the end when rendering to avoid re-creating arrays; we'll append visually
 
   // Static items after dynamic links
   const baseAfter: MenuItem[] = [
@@ -160,14 +123,67 @@ export function TVDrawerLayout() {
       route: "/(auth)/(tabs)/(home)/settings",
       titleKey: "home.settings.settings_title",
       icon: "settings",
+      routeType: "base",
     },
   ];
 
-  const menuItems: MenuItem[] = [
-    ...baseBefore,
-    ...dynamicTvItems,
-    ...baseAfter,
-  ];
+  // Freeze dynamic items once when links become available
+  useEffect(() => {
+    if (didFreezeDynamicRef.current) return;
+    if (!Array.isArray(rawTvLinks)) return;
+    const dynamicTvItems: MenuItem[] = rawTvLinks
+      .filter(
+        (l) =>
+          !!l &&
+          typeof l.name === "string" &&
+          typeof l.id === "string" &&
+          l.id.length > 0,
+      )
+      .map((l, idx) => {
+        const route =
+          l.type === "collection"
+            ? `/((auth))/(tabs)/(libraries)/collections/${l.id}`.replace(
+                "((auth))",
+                "(auth)",
+              )
+            : l.type === "library"
+              ? `/((auth))/(tabs)/(libraries)/${l.id}`.replace(
+                  "((auth))",
+                  "(auth)",
+                )
+              : undefined;
+        // Build image URL only if API is ready and result is valid
+        let imageIconUri: string | undefined = l.icon || undefined;
+        if (!imageIconUri && api) {
+          try {
+            const u = getPrimaryImageUrlById({
+              api,
+              id: l.id,
+              width: 64,
+              quality: 90,
+            });
+            if (u && !String(u).startsWith("undefined")) imageIconUri = u;
+          } catch {}
+        }
+
+        return {
+          key: `tvlink-${l.id || idx}`,
+          route,
+          title: l.name,
+          imageIconUri,
+          routeType:
+            l.type === "collection"
+              ? "collection"
+              : l.type === "library"
+                ? "library"
+                : undefined,
+          underlyingId: l.id,
+        } as MenuItem;
+      });
+    setMenuItems([...baseBefore, ...dynamicTvItems]);
+    didFreezeDynamicRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawTvLinks, api]);
 
   const navigateToRoute = useCallback(
     (route: string) => {
@@ -176,156 +192,128 @@ export function TVDrawerLayout() {
     },
     [router, pathname, devLog],
   );
+  // Compute active key once per path change
+  const pathMeta = useMemo(() => {
+    const norm = (p: string) =>
+      p
+        .split("/")
+        .filter(Boolean)
+        .map((s) => s.replace(/[()]/g, ""));
 
-  const isRouteActive = useCallback(
-    (route?: string) => {
-      if (!route) return false;
-      const norm = (p: string) =>
-        p
-          .split("/")
-          .filter(Boolean)
-          .map((s) => s.replace(/[()]/g, ""));
+    const segsFromHook = Array.isArray(segments) ? (segments as string[]) : [];
+    const segsNormalized = segsFromHook.map((s) => s.replace(/[()]/g, ""));
+    const afterTabsIdx = segsNormalized.indexOf("tabs");
+    const afterTabsRaw =
+      afterTabsIdx >= 0
+        ? segsNormalized.slice(afterTabsIdx + 1)
+        : segsNormalized;
 
-      const routeSegs = norm(route);
-      const underlyingId = routeSegs[routeSegs.length - 1];
-      const isDynamicTvLink =
-        route.includes("/collections/") || /\/libraries\/(?!$)/.test(route);
+    const pathFallbackSegs = norm(pathname || "");
+    const fallbackLast = pathFallbackSegs[pathFallbackSegs.length - 1];
+    const pathLooksLikeId = /[0-9a-fA-F]{8,}/.test(fallbackLast || "");
+    const actualId = pathLooksLikeId ? fallbackLast : undefined;
 
-      // Segments from hook (include group placeholders & dynamic param placeholders)
-      const segsFromHook = Array.isArray(segments)
-        ? (segments as string[])
-        : [];
-      const segsNormalized = segsFromHook.map((s) => s.replace(/[()]/g, ""));
+    const librariesIdx = afterTabsRaw.indexOf("libraries");
+    const isLibrariesRoot =
+      librariesIdx >= 0 && afterTabsRaw.length === librariesIdx + 1;
+    const hasLibraries = librariesIdx >= 0;
+    const hasCollections = afterTabsRaw.includes("collections");
 
-      // Fallback actual path (contains real param IDs but omits group segments)
-      const pathFallbackSegs = norm(pathname || "");
+    const baseCandidates = ["home", "search", "favorites", "settings"] as const;
+    const baseKey =
+      baseCandidates.find((k) => afterTabsRaw.includes(k)) ??
+      (baseCandidates.includes(pathFallbackSegs[0] as any)
+        ? (pathFallbackSegs[0] as any)
+        : undefined);
 
-      // Build a merged view: prefer segsNormalized for structural position (groups),
-      // use fallback for actual id value if last segment in segsNormalized is a param placeholder
-      const afterTabsIdx = segsNormalized.indexOf("tabs");
-      const afterTabsRaw =
-        afterTabsIdx >= 0
-          ? segsNormalized.slice(afterTabsIdx + 1)
-          : segsNormalized;
+    return {
+      afterTabsRaw,
+      actualId,
+      isLibrariesRoot,
+      hasLibraries,
+      hasCollections,
+      baseKey,
+    };
+  }, [pathname, segments]);
 
-      // Determine actual id from fallback path (last part if looks like hex or length > 5)
-      const fallbackLast = pathFallbackSegs[pathFallbackSegs.length - 1];
-      const pathLooksLikeId = /[0-9a-fA-F]{8,}/.test(fallbackLast || "");
-      const actualId = pathLooksLikeId ? fallbackLast : undefined;
+  const idToKey = useMemo(() => {
+    const lib = new Map<string, string>();
+    const col = new Map<string, string>();
+    for (const it of menuItems) {
+      if (it.routeType === "library" && it.underlyingId)
+        lib.set(it.underlyingId, it.key);
+      if (it.routeType === "collection" && it.underlyingId)
+        col.set(it.underlyingId, it.key);
+    }
+    return { lib, col };
+  }, [menuItems]);
 
-      // Library root active only when we are exactly on libraries (no deeper segments)
-      if (
-        (!isDynamicTvLink && route.endsWith("/(libraries)")) ||
-        routeSegs[routeSegs.length - 1] === "libraries"
-      ) {
-        const librariesIdx = afterTabsRaw.indexOf("libraries");
-        if (librariesIdx >= 0) {
-          const deeper = afterTabsRaw.length > librariesIdx + 1;
-          if (!deeper) {
-            devLog("isRouteActive", { route, reason: "exact libraries" });
-            return true;
-          }
-        }
+  const activeKey = useMemo(() => {
+    if (pathMeta.baseKey) return pathMeta.baseKey;
+    if (pathMeta.isLibrariesRoot) return "libraries";
+    if (pathMeta.actualId) {
+      if (pathMeta.hasCollections)
+        return idToKey.col.get(pathMeta.actualId) || null;
+      if (pathMeta.hasLibraries)
+        return idToKey.lib.get(pathMeta.actualId) || null;
+    }
+    return null;
+  }, [pathMeta, idToKey]);
+
+  const handleSidebarFocus = useCallback(
+    (itemKey?: string) => {
+      // Ignore transient focus events during/just-after navigation
+      if (Date.now() < suppressFocusToggleUntilRef.current) return;
+      // Cancel any pending blur collapse
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
       }
 
-      // Dynamic collection match: structure has 'libraries','collections', placeholder; actualId matches underlyingId
-      let dynamicMatch = false;
-      if (isDynamicTvLink) {
-        const hasCollections = afterTabsRaw.includes("collections");
-        if (route.includes("/collections/") && hasCollections) {
-          // Only highlight the one whose route id matches the current path id
-          dynamicMatch = underlyingId === actualId;
-        } else if (
-          route.includes("/libraries/") &&
-          !route.includes("/collections/")
-        ) {
-          // dynamic library link
-          const hasLibraries = afterTabsRaw.includes("libraries");
-          if (hasLibraries) {
-            // Only highlight the one whose route id matches the current path id
-            dynamicMatch = underlyingId === actualId;
-          }
-        }
+      // Expand the sidebar when a sidebar item receives focus
+      if (!isStickyOpen || !isSidebarFocused) {
+        try {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        } catch {}
+        setIsStickyOpen((prev) => (prev ? prev : true));
+        setIsSidebarFocused((prev) => (prev ? prev : true));
       }
 
-      // Non-dynamic base items (home/search/favorites/settings)
-      if (!isDynamicTvLink) {
-        const candidateKey = routeSegs[routeSegs.length - 1];
-        const isBase = ["home", "search", "favorites", "settings"].includes(
-          candidateKey,
-        );
-        if (isBase) {
-          const active =
-            afterTabsRaw.includes(candidateKey) ||
-            pathFallbackSegs[0] === candidateKey;
-          devLog("isRouteActive", {
-            route,
-            base: candidateKey,
-            active,
-            afterTabsRaw,
-            pathFallbackSegs,
-          });
-          return active;
-        }
-      }
-
-      devLog("isRouteActive", {
-        route,
-        pathname,
-        segsNormalized,
-        afterTabsRaw,
-        pathFallbackSegs,
-        underlyingId,
-        actualId,
-        isDynamicTvLink,
-        dynamicMatch,
-        dynamicIds: Array.from(dynamicIds),
-      });
-      return dynamicMatch;
+      // We've re-entered the sidebar, so clear any pending restore hint
+      setRestoreFocusOnNextEnter((prev) => (prev ? false : prev));
+      devLog("onFocus sidebar item", { itemKey, pathname });
     },
-    [pathname, segments, menuItems, devLog, dynamicIds],
+    [devLog, isSidebarFocused, isStickyOpen, pathname],
   );
 
-  const handleSidebarFocus = useCallback((itemKey?: string) => {
-    // Ignore transient focus events during/just-after navigation
-    if (Date.now() < suppressFocusToggleUntilRef.current) return;
-    // Cancel any pending blur collapse
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = null;
-    }
+  const handleSidebarBlur = useCallback(
+    (itemKey?: string) => {
+      // Small delay to allow navigation between sidebar items
+      // stor the last used itemKey for focus restoration on re-entry
+      itemKey && setLastFocusedKey(itemKey);
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
 
-    // Expand the sidebar when a sidebar item receives focus
-    try {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    } catch {}
-    setIsStickyOpen(true);
-    setIsSidebarFocused(true);
-    if (itemKey) setLastFocusedKey(itemKey);
-    // We've re-entered the sidebar, so clear any pending restore hint
-    setRestoreFocusOnNextEnter(false);
-    devLog("onFocus sidebar item", { itemKey, pathname });
-  }, []);
-
-  const handleSidebarBlur = useCallback(() => {
-    // Small delay to allow navigation between sidebar items
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-    }
-
-    blurTimeoutRef.current = setTimeout(() => {
-      try {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      } catch {}
-      // Collapse only if no other sidebar item regained focus within the debounce window
-      setIsSidebarFocused(false);
-      setIsStickyOpen(false);
-      // Hint that on next re-entry we should restore focus to the last item
-      setRestoreFocusOnNextEnter(true);
-      blurTimeoutRef.current = null;
-    }, 250); // Slightly longer delay for smoother, less jittery collapse
-    devLog("onBlur sidebar", { pathname });
-  }, []);
+      blurTimeoutRef.current = setTimeout(() => {
+        if (isSidebarFocused || isStickyOpen) {
+          try {
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut,
+            );
+          } catch {}
+          // Collapse only if no other sidebar item regained focus within the debounce window
+          setIsSidebarFocused((prev) => (prev ? false : prev));
+          setIsStickyOpen((prev) => (prev ? false : prev));
+          // Hint that on next re-entry we should restore focus to the last item
+          setRestoreFocusOnNextEnter((prev) => (prev ? prev : true));
+        }
+        blurTimeoutRef.current = null;
+      }, 250); // Slightly longer delay for smoother, less jittery collapse
+      devLog("onBlur sidebar", { itemKey, pathname });
+    },
+    [devLog, isSidebarFocused, isStickyOpen, pathname],
+  );
 
   const handleSidebarPress = useCallback(
     (route: string) => {
@@ -428,6 +416,99 @@ export function TVDrawerLayout() {
     }
   }, [preferredFocusKey, menuItems]);
 
+  // Memoized row component (defined before any conditional returns to respect Hooks rules)
+  const SidebarItem = useMemo(() => {
+    return memo(function SidebarItem({
+      item,
+      isActive,
+      isExpanded,
+      preferred,
+      elementKey,
+      onPressItem,
+      onFocusItem,
+      onBlurItem,
+    }: {
+      item: MenuItem;
+      isActive: boolean;
+      isExpanded: boolean;
+      preferred: boolean;
+      elementKey: string;
+      onPressItem: (it: MenuItem) => void;
+      onFocusItem: (key: string) => void;
+      onBlurItem: (key: string) => void;
+    }) {
+      return (
+        <TouchableOpacity
+          key={elementKey}
+          className={`flex-row items-center justify-start py-0 px-4 pl-8 rounded-lg relative bg-transparent min-h-[52px] w-full ${
+            isActive ? "bg-purple-600/15" : ""
+          }`}
+          onPress={() => onPressItem(item)}
+          onFocus={() => onFocusItem(item.key)}
+          onBlur={() => onBlurItem(item.key)}
+          {...(Platform.isTV
+            ? ({ hasTVPreferredFocus: preferred, focusable: true } as any)
+            : undefined)}
+          accessibilityLabel={item.titleKey ? t(item.titleKey) : item.title}
+          accessibilityRole='button'
+        >
+          <View className='mr-3'>
+            {item.imageIconUri ? (
+              <Image
+                source={{ uri: item.imageIconUri }}
+                style={{ width: 28, height: 28, borderRadius: 4 }}
+                resizeMode='cover'
+              />
+            ) : (
+              <MaterialIcons
+                name={(item.icon as any) || "link"}
+                size={28}
+                color={isActive ? "#9334E9" : "#fff"}
+              />
+            )}
+          </View>
+          {isExpanded && (
+            <Text
+              className={`text-base font-medium text-white flex-1 ${
+                isActive ? "text-purple-600 font-semibold" : ""
+              }`}
+              numberOfLines={1}
+              ellipsizeMode='tail'
+            >
+              {item.titleKey ? t(item.titleKey) : item.title}
+            </Text>
+          )}
+          {isActive && (
+            <View className='absolute left-0 top-0 bottom-0 w-1 bg-purple-600 rounded-sm' />
+          )}
+        </TouchableOpacity>
+      );
+    });
+  }, [t]);
+
+  const onPressItem = useCallback(
+    (item: MenuItem) => {
+      setLastFocusedKey(item.key);
+      setPreferredFocusKey(item.key);
+      setFocusRemountToken((c) => c + 1);
+      if (item.route) {
+        handleSidebarPress(item.route);
+      } else {
+        devLog("onPress dynamic tvSidebarLinks item (no route yet)", item);
+      }
+    },
+    [devLog, handleSidebarPress],
+  );
+
+  const onFocusItem = useCallback(
+    (key: string) => handleSidebarFocus(key),
+    [handleSidebarFocus],
+  );
+  const onBlurItem = useCallback(
+    (key: string) => handleSidebarBlur(key),
+    [handleSidebarBlur],
+  );
+
   // Only show this layout on TV platforms
   if (!Platform.isTV) {
     return (
@@ -472,91 +553,57 @@ export function TVDrawerLayout() {
           <View className={`flex-1 pt-0 ${isExpanded ? "px-0" : "px-0"}`}>
             <FlatList
               ref={menuListRef}
-              data={menuItems}
+              data={[...menuItems, ...baseAfter]}
               keyExtractor={(it) => it.key}
-              renderItem={({ item, index }) => {
-                const isActive = isRouteActive(item.route);
-                const tvFocusProps = Platform.isTV
-                  ? ({
-                      hasTVPreferredFocus:
-                        preferredFocusKey != null &&
-                        preferredFocusKey === item.key,
-                      focusable: true,
-                    } as any)
-                  : undefined;
-
+              renderItem={({ item }) => {
+                const isActive = item.key === activeKey;
                 const elementKey =
                   preferredFocusKey === item.key && focusRemountToken
                     ? `${item.key}-pf-${focusRemountToken}`
                     : item.key;
+                // Fallback: if item is missing imageIconUri but API is ready, compute on the fly
+                if (!item.imageIconUri && item.underlyingId && api) {
+                  try {
+                    const u = getPrimaryImageUrlById({
+                      api,
+                      id: item.underlyingId,
+                      width: 64,
+                      quality: 90,
+                    });
+                    if (u && !String(u).startsWith("undefined")) {
+                      // mutate a shallow copy to avoid breaking memoization identity of menuItems array
+                      (item as any).imageIconUri = u;
+                    }
+                  } catch {}
+                }
 
                 return (
-                  <TouchableOpacity
-                    key={elementKey}
-                    className={`flex-row items-center justify-start py-0 px-4 mb-0.5 rounded-lg relative bg-transparent min-h-[52px] w-full ${
-                      isActive ? "bg-purple-600/15" : ""
-                    }`}
-                    onPress={() => {
-                      setLastFocusedKey(item.key);
-                      // Keep focus on the sidebar item so visual state matches Settings
-                      setPreferredFocusKey(item.key);
-                      setFocusRemountToken((c) => c + 1);
-                      if (item.route) {
-                        handleSidebarPress(item.route);
-                      } else {
-                        devLog(
-                          "onPress dynamic tvSidebarLinks item (no route yet)",
-                          item,
-                        );
-                      }
-                    }}
-                    onFocus={() => {
-                      handleSidebarFocus(item.key);
-                      try {
-                        menuListRef.current?.scrollToIndex({
-                          index,
-                          viewPosition: 0.5,
-                          animated: true,
-                        });
-                      } catch {}
-                    }}
-                    onBlur={handleSidebarBlur}
-                    {...(tvFocusProps || {})}
-                    accessibilityLabel={
-                      item.titleKey ? t(item.titleKey) : item.title
+                  <SidebarItem
+                    item={item}
+                    isActive={!!isActive}
+                    isExpanded={isExpanded}
+                    preferred={
+                      preferredFocusKey != null &&
+                      preferredFocusKey === item.key
                     }
-                    accessibilityRole='button'
-                  >
-                    <View className='mr-3'>
-                      {item.imageIconUri ? (
-                        <Image
-                          source={{ uri: item.imageIconUri }}
-                          style={{ width: 24, height: 24, borderRadius: 4 }}
-                          resizeMode='cover'
-                        />
-                      ) : (
-                        <MaterialIcons
-                          name={(item.icon as any) || "link"}
-                          size={24}
-                          color={isActive ? "#9334E9" : "#fff"}
-                        />
-                      )}
-                    </View>
-
-                    <Text
-                      className={`text-base font-medium text-white flex-1 ${
-                        isActive ? "text-purple-600 font-semibold" : ""
-                      } ${!isExpanded ? "opacity-0 w-0 h-0" : ""}`}
-                    >
-                      {item.titleKey ? t(item.titleKey) : item.title}
-                    </Text>
-
-                    {isActive && (
-                      <View className='absolute left-0 top-0 bottom-0 w-1 bg-purple-600 rounded-sm' />
-                    )}
-                  </TouchableOpacity>
+                    elementKey={elementKey}
+                    onPressItem={onPressItem}
+                    onFocusItem={onFocusItem}
+                    onBlurItem={onBlurItem}
+                  />
                 );
               }}
+              extraData={{
+                isExpanded,
+                activeKey,
+                preferredFocusKey,
+                focusRemountToken,
+              }}
+              initialNumToRender={10}
+              windowSize={10}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={32}
+              removeClippedSubviews={false}
               getItemLayout={(_data, index) => ({
                 length: ITEM_HEIGHT,
                 offset: ITEM_HEIGHT * index,
