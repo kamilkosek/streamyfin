@@ -78,7 +78,23 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
           title={t("home.settings.audio.set_audio_track")}
           disabled={pluginSettings?.rememberAudioSelections?.locked}
         >
-          <FocusableItem>
+          <FocusableItem
+            // On TV, allow DPAD SELECT to toggle the switch, because otherwise the `switch` isnt doing
+            // anything when focused
+            onPress={
+              isTv
+                ? () =>
+                    !pluginSettings?.rememberAudioSelections?.locked &&
+                    updateSettings({
+                      rememberAudioSelections:
+                        !settings.rememberAudioSelections,
+                    })
+                : undefined
+            }
+            disabled={pluginSettings?.rememberAudioSelections?.locked}
+            // TODO:
+            borderOnFocus={true} // otherwise its really difficult to see what is focuesd, here we need a different solut9ion
+          >
             <Switch
               value={settings.rememberAudioSelections}
               disabled={pluginSettings?.rememberAudioSelections?.locked}
@@ -92,11 +108,8 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
         <ListItem title={t("home.settings.audio.audio_language")}>
           {isTv ? (
             <>
-              <FocusableItem>
-                <TouchableOpacity
-                  className='flex flex-row items-center justify-between py-3 pl-3'
-                  onPress={() => setAudioLangSheetVisible(true)}
-                >
+              <FocusableItem onPress={() => setAudioLangSheetVisible(true)}>
+                <View className='flex flex-row items-center justify-between py-3 pl-3'>
                   <Text className='mr-1 text-[#8E8D91]'>
                     {settings?.defaultAudioLanguage?.DisplayName ||
                       t("home.settings.audio.none")}
@@ -106,7 +119,7 @@ export const AudioToggles: React.FC<Props> = ({ ...props }) => {
                     size={18}
                     color='#5A5960'
                   />
-                </TouchableOpacity>
+                </View>
               </FocusableItem>
               <ModalActionSheet
                 title={t("home.settings.audio.language")}

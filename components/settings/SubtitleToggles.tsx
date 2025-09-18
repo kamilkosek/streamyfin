@@ -123,11 +123,8 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
         <ListItem title={t("home.settings.subtitles.subtitle_language")}>
           {isTv ? (
             <>
-              <FocusableItem>
-                <TouchableOpacity
-                  className='flex flex-row items-center justify-between py-3 pl-3'
-                  onPress={() => setLangSheetVisible(true)}
-                >
+              <FocusableItem onPress={() => setLangSheetVisible(true)}>
+                <View className='flex flex-row items-center justify-between py-3 pl-3'>
                   <Text className='mr-1 text-[#8E8D91]'>
                     {settings?.defaultSubtitleLanguage?.DisplayName ||
                       t("home.settings.subtitles.none")}
@@ -137,7 +134,7 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
                     size={18}
                     color='#5A5960'
                   />
-                </TouchableOpacity>
+                </View>
               </FocusableItem>
               <ModalActionSheet
                 title={t("home.settings.subtitles.language")}
@@ -193,15 +190,14 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
         >
           {isTv ? (
             <>
-              <FocusableItem>
-                <TouchableOpacity
-                  className='flex flex-row items-center justify-between py-3 pl-3'
-                  onPress={() => {
-                    if (!pluginSettings?.subtitleMode?.locked)
-                      setModeSheetVisible(true);
-                  }}
-                  disabled={pluginSettings?.subtitleMode?.locked}
-                >
+              <FocusableItem
+                onPress={() => {
+                  if (!pluginSettings?.subtitleMode?.locked)
+                    setModeSheetVisible(true);
+                }}
+                disabled={pluginSettings?.subtitleMode?.locked}
+              >
+                <View className='flex flex-row items-center justify-between py-3 pl-3'>
                   <Text className='mr-1 text-[#8E8D91]'>
                     {t(subtitleModeKeys[settings?.subtitleMode]) ||
                       t("home.settings.subtitles.loading")}
@@ -211,7 +207,7 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
                     size={18}
                     color='#5A5960'
                   />
-                </TouchableOpacity>
+                </View>
               </FocusableItem>
               <ModalActionSheet
                 title={t("home.settings.subtitles.subtitle_mode")}
@@ -252,7 +248,20 @@ export const SubtitleToggles: React.FC<Props> = ({ ...props }) => {
           title={t("home.settings.subtitles.set_subtitle_track")}
           disabled={pluginSettings?.rememberSubtitleSelections?.locked}
         >
-          <FocusableItem>
+          <FocusableItem
+            onPress={
+              isTv
+                ? () =>
+                    !pluginSettings?.rememberSubtitleSelections?.locked &&
+                    updateSettings({
+                      rememberSubtitleSelections:
+                        !settings.rememberSubtitleSelections,
+                    })
+                : undefined
+            }
+            disabled={pluginSettings?.rememberSubtitleSelections?.locked}
+            borderOnFocus={true}
+          >
             <Switch
               value={settings.rememberSubtitleSelections}
               disabled={pluginSettings?.rememberSubtitleSelections?.locked}

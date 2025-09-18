@@ -5,7 +5,13 @@ import { TFunction } from "i18next";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Linking, Platform, Switch, TouchableOpacity } from "react-native";
+import {
+  Linking,
+  Platform,
+  Switch,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { toast } from "sonner-native";
 import { BITRATES } from "@/components/BitrateSelector";
 import Dropdown from "@/components/common/Dropdown";
@@ -190,24 +196,23 @@ export const OtherSettings: React.FC = () => {
             }
           >
             {/* TV: Use ModalActionSheet instead of Dropdown */}
-            <FocusableItem>
-              <TouchableOpacity
-                className='flex flex-row items-center justify-between py-3 pl-3'
-                onPress={() => {
-                  if (
-                    !(
-                      pluginSettings?.defaultVideoOrientation?.locked ||
-                      settings.followDeviceOrientation
-                    )
-                  ) {
-                    setOrientationSheetVisible(true);
-                  }
-                }}
-                disabled={
-                  pluginSettings?.defaultVideoOrientation?.locked ||
-                  settings.followDeviceOrientation
+            <FocusableItem
+              onPress={() => {
+                if (
+                  !(
+                    pluginSettings?.defaultVideoOrientation?.locked ||
+                    settings.followDeviceOrientation
+                  )
+                ) {
+                  setOrientationSheetVisible(true);
                 }
-              >
+              }}
+              disabled={
+                pluginSettings?.defaultVideoOrientation?.locked ||
+                settings.followDeviceOrientation
+              }
+            >
+              <View className='flex flex-row items-center justify-between py-3 pl-3'>
                 <Text className='mr-1 text-[#8E8D91]'>
                   {t(
                     orientationTranslations[
@@ -220,7 +225,7 @@ export const OtherSettings: React.FC = () => {
                   size={18}
                   color='#5A5960'
                 />
-              </TouchableOpacity>
+              </View>
             </FocusableItem>
             <ModalActionSheet
               title={t("home.settings.other.orientation")}
@@ -285,7 +290,19 @@ export const OtherSettings: React.FC = () => {
             )
           }
         >
-          <FocusableItem>
+          <FocusableItem
+            onPress={
+              Platform.isTV
+                ? () =>
+                    !pluginSettings?.showCustomMenuLinks?.locked &&
+                    updateSettings({
+                      showCustomMenuLinks: !settings.showCustomMenuLinks,
+                    })
+                : undefined
+            }
+            disabled={pluginSettings?.showCustomMenuLinks?.locked}
+            borderOnFocus={true}
+          >
             <Switch
               value={settings.showCustomMenuLinks}
               disabled={pluginSettings?.showCustomMenuLinks?.locked}
@@ -306,16 +323,15 @@ export const OtherSettings: React.FC = () => {
         >
           {isTv ? (
             <>
-              <FocusableItem>
-                <TouchableOpacity
-                  className='flex flex-row items-center justify-between py-3 pl-3'
-                  onPress={() => {
-                    if (!pluginSettings?.defaultBitrate?.locked) {
-                      setQualitySheetVisible(true);
-                    }
-                  }}
-                  disabled={pluginSettings?.defaultBitrate?.locked}
-                >
+              <FocusableItem
+                onPress={() => {
+                  if (!pluginSettings?.defaultBitrate?.locked) {
+                    setQualitySheetVisible(true);
+                  }
+                }}
+                disabled={pluginSettings?.defaultBitrate?.locked}
+              >
+                <View className='flex flex-row items-center justify-between py-3 pl-3'>
                   <Text className='mr-1 text-[#8E8D91]'>
                     {settings.defaultBitrate?.key}
                   </Text>
@@ -324,7 +340,7 @@ export const OtherSettings: React.FC = () => {
                     size={18}
                     color='#5A5960'
                   />
-                </TouchableOpacity>
+                </View>
               </FocusableItem>
               <ModalActionSheet
                 title={t("home.settings.other.default_quality")}
@@ -363,7 +379,19 @@ export const OtherSettings: React.FC = () => {
           title={t("home.settings.other.disable_haptic_feedback")}
           disabled={pluginSettings?.disableHapticFeedback?.locked}
         >
-          <FocusableItem>
+          <FocusableItem
+            onPress={
+              Platform.isTV
+                ? () =>
+                    !pluginSettings?.disableHapticFeedback?.locked &&
+                    updateSettings({
+                      disableHapticFeedback: !settings.disableHapticFeedback,
+                    })
+                : undefined
+            }
+            disabled={pluginSettings?.disableHapticFeedback?.locked}
+            borderOnFocus={true}
+          >
             <Switch
               value={settings.disableHapticFeedback}
               disabled={pluginSettings?.disableHapticFeedback?.locked}
@@ -376,11 +404,8 @@ export const OtherSettings: React.FC = () => {
         <ListItem title={t("home.settings.other.max_auto_play_episode_count")}>
           {isTv ? (
             <>
-              <FocusableItem>
-                <TouchableOpacity
-                  className='flex flex-row items-center justify-between py-3 pl-3'
-                  onPress={() => setAutoplaySheetVisible(true)}
-                >
+              <FocusableItem onPress={() => setAutoplaySheetVisible(true)}>
+                <View className='flex flex-row items-center justify-between py-3 pl-3'>
                   <Text className='mr-1 text-[#8E8D91]'>
                     {t(settings?.maxAutoPlayEpisodeCount.key)}
                   </Text>
@@ -389,7 +414,7 @@ export const OtherSettings: React.FC = () => {
                     size={18}
                     color='#5A5960'
                   />
-                </TouchableOpacity>
+                </View>
               </FocusableItem>
               <ModalActionSheet
                 title={t("home.settings.other.max_auto_play_episode_count")}
