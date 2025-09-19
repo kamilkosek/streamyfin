@@ -1,5 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import type { PropsWithChildren, ReactElement } from "react";
+import { useEffect } from "react";
 import { type NativeScrollEvent, View, type ViewProps } from "react-native";
 import Animated, {
   interpolate,
@@ -7,6 +8,7 @@ import Animated, {
   useAnimatedStyle,
   useScrollViewOffset,
 } from "react-native-reanimated";
+import { eventBus } from "@/utils/eventBus";
 
 interface Props extends ViewProps {
   headerImage: ReactElement;
@@ -58,6 +60,18 @@ export const ParallaxScrollView: React.FC<PropsWithChildren<Props>> = ({
       layoutMeasurement.height + contentOffset.y >= contentSize.height - 20
     );
   }
+
+  // Listen for global "item content" scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = eventBus.on("itemContent.scrollToTop", () => {
+      // Ensure we have a valid ref and method; ignore if not mounted yet
+      const ref: any = scrollRef as any;
+      try {
+        ref?.current?.scrollTo?.({ y: 0, animated: true });
+      } catch {}
+    });
+    return () => unsubscribe();
+  }, []);
 
   return (
     <View className='flex-1' {...props}>

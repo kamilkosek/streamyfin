@@ -16,6 +16,7 @@ import { FocusableItem } from "@/components/common/FocusableItem";
 import { useHaptic } from "@/hooks/useHaptic";
 import { itemThemeColorAtom } from "@/utils/atoms/primaryColor";
 import { useSettings } from "@/utils/atoms/settings";
+import { eventBus } from "@/utils/eventBus";
 import { runtimeTicksToMinutes } from "@/utils/time";
 import type { Button } from "./Button";
 import type { SelectedOptions } from "./ItemContent";
@@ -32,6 +33,10 @@ export const PlayButton: React.FC<Props> = ({
   item,
   selectedOptions,
 }: Props) => {
+  const devLog = useCallback((...args: any[]) => {
+    if (__DEV__) console.log("[PlayButton.tv]", ...args);
+  }, []);
+  devLog("Rendered for item", item?.Id, item?.Name);
   const [colorAtom] = useAtom(itemThemeColorAtom);
 
   const router = useRouter();
@@ -133,7 +138,10 @@ export const PlayButton: React.FC<Props> = ({
         className='pl-2 flex-1 rounded-xl'
         borderOnFocus={false}
         hasTVPreferredFocus
-        onFocus={() => setIsPlayFocused(true)}
+        onFocus={() => {
+          setIsPlayFocused(true);
+          eventBus.emit("itemContent.scrollToTop");
+        }}
         onBlur={() => setIsPlayFocused(false)}
       >
         <View
@@ -180,7 +188,10 @@ export const PlayButton: React.FC<Props> = ({
           onPress={handleResume}
           className='flex-1 rounded-xl'
           borderOnFocus={false}
-          onFocus={() => setIsResumeFocused(true)}
+          onFocus={() => {
+            setIsResumeFocused(true);
+            eventBus.emit("itemContent.scrollToTop");
+          }}
           onBlur={() => setIsResumeFocused(false)}
         >
           <View
