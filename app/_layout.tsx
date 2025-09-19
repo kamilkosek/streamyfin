@@ -415,7 +415,8 @@ function Layout() {
         <PlaySettingsProvider>
           <LogProvider>
             <WebSocketProvider>
-              <DownloadProvider>
+              {/* On TV, skip mounting DownloadProvider to avoid unnecessary work */}
+              <MaybeDownloadProvider>
                 <BottomSheetModalProvider>
                   <SystemBars style='light' hidden={false} />
                   <ThemeProvider value={DarkTheme}>
@@ -462,11 +463,17 @@ function Layout() {
                     />
                   </ThemeProvider>
                 </BottomSheetModalProvider>
-              </DownloadProvider>
+              </MaybeDownloadProvider>
             </WebSocketProvider>
           </LogProvider>
         </PlaySettingsProvider>
       </JellyfinProvider>
     </QueryClientProvider>
   );
+}
+
+// Simple wrapper that only mounts the DownloadProvider on non-TV platforms, this avoids costly updates
+function MaybeDownloadProvider({ children }: { children: React.ReactNode }) {
+  if (Platform.isTV) return <>{children}</>;
+  return <DownloadProvider>{children}</DownloadProvider>;
 }
