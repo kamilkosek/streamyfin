@@ -276,6 +276,7 @@ export default function search() {
             router.setParams({ q: "" });
             setSearch(text);
           }}
+          hasTVPreferredFocus={true}
           keyboardType='default'
           returnKeyType='done'
           autoCapitalize='none'
