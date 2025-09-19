@@ -11,10 +11,11 @@ import {
   getUserLibraryApi,
   getUserViewsApi,
 } from "@jellyfin/sdk/lib/utils/api";
+import { FlashList } from "@shopify/flash-list";
 import { type QueryFunction, useQuery } from "@tanstack/react-query";
 import { useNavigation, useRouter, useSegments } from "expo-router";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -55,6 +56,39 @@ type MediaListSectionType = {
 
 type Section = ScrollingCollectionListSection | MediaListSectionType;
 
+// Shallow equality for arrays
+const areShallowEqualArrays = (
+  a?: ReadonlyArray<any>,
+  b?: ReadonlyArray<any>,
+) => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+};
+
+// Memoized section components for TV to avoid unnecessary re-renders
+const MemoScrollingCollectionList = memo(
+  ScrollingCollectionList,
+  (prev, next) => {
+    return (
+      prev.title === next.title &&
+      areShallowEqualArrays(prev.queryKey as any, next.queryKey as any) &&
+      prev.queryFn === next.queryFn &&
+      prev.orientation === next.orientation &&
+      (prev as any).hideIfEmpty === (next as any).hideIfEmpty
+    );
+  },
+);
+
+const MemoMediaListSection = memo(MediaListSection, (prev, next) => {
+  return (
+    areShallowEqualArrays(prev.queryKey as any, next.queryKey as any) &&
+    prev.queryFn === next.queryFn
+  );
+});
+
 export const HomeIndex = () => {
   const router = useRouter();
 
@@ -71,6 +105,7 @@ export const HomeIndex = () => {
   const insets = useSafeAreaInsets();
 
   const scrollViewRef = useRef<ScrollView>(null);
+  const flashListRef = useRef<FlashList<any>>(null);
 
   const { getDownloadedItems, cleanCacheDirectory } = useDownload();
   const prevIsConnected = useRef<boolean | null>(false);
@@ -120,8 +155,13 @@ export const HomeIndex = () => {
   const segments = useSegments();
   useEffect(() => {
     const unsubscribe = eventBus.on("scrollToTop", () => {
-      if (segments[2] === "(home)")
-        scrollViewRef.current?.scrollTo({ y: -152, animated: true });
+      if (segments[2] === "(home)") {
+        if (Platform.isTV) {
+          flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        } else {
+          scrollViewRef.current?.scrollTo({ y: -152, animated: true });
+        }
+      }
     });
 
     return () => {
@@ -308,7 +348,7 @@ export const HomeIndex = () => {
     if (!api || !user?.Id || !settings?.home?.sections) return [];
     const ss: Section[] = [];
     for (const [index, section] of settings.home.sections.entries()) {
-      const id = section.title || `section-${index}`;
+      const id = (section as any)?.title || `section-${index}`;
       ss.push({
         title: t(`${id}`),
         queryKey: ["home", id],
@@ -416,6 +456,66 @@ export const HomeIndex = () => {
         <Loader />
       </View>
     );
+
+  // On TV, use FlashList for better performance; keep ScrollView on mobile, maybe we can switch later to FlashList there as well
+  if (Platform.isTV) {
+    type TVItem = { type: "carousel" } | { type: "section"; section: Section };
+    return (
+      <FlashList
+        ref={flashListRef}
+        data={[
+          { type: "carousel" } as TVItem,
+          ...sections.map((s) => ({ type: "section", section: s }) as TVItem),
+        ]}
+        keyExtractor={(item, index) =>
+          item.type === "carousel"
+            ? "carousel"
+            : `section:${(item.section.queryKey || [index]).join("-")}`
+        }
+        estimatedItemSize={420}
+        getItemType={(item) => item.type}
+        refreshing={loading}
+        onRefresh={refetch}
+        contentContainerStyle={{
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          paddingBottom: 16,
+        }}
+        renderItem={({ item, index }) => {
+          if (item.type === "carousel") {
+            return (
+              <View className='mb-4'>
+                <LargeMovieCarousel />
+              </View>
+            );
+          }
+          const section = item.section;
+          if (section.type === "ScrollingCollectionList") {
+            return (
+              <MemoScrollingCollectionList
+                key={index}
+                title={section.title}
+                queryKey={section.queryKey}
+                queryFn={section.queryFn}
+                orientation={section.orientation}
+                hideIfEmpty
+              />
+            );
+          }
+          if (section.type === "MediaListSection") {
+            return (
+              <MemoMediaListSection
+                key={index}
+                queryKey={section.queryKey}
+                queryFn={section.queryFn}
+              />
+            );
+          }
+          return null;
+        }}
+      />
+    );
+  }
 
   return (
     <ScrollView
