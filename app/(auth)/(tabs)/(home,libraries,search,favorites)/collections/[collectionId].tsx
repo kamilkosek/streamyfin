@@ -13,9 +13,9 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useAtom } from "jotai";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlatList, Platform, View } from "react-native";
+import { Dimensions, FlatList, Platform, View } from "react-native";
 import { Text } from "@/components/common/Text";
 import { TouchableItemRouter } from "@/components/common/TouchableItemRouter";
 import { FilterButton } from "@/components/filters/FilterButton";
@@ -37,84 +37,121 @@ import {
 } from "@/utils/atoms/filters";
 import { useSettings } from "@/utils/atoms/settings";
 
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const devLog = (...args: any[]) => {
+  if (__DEV__) console.log("[collection]", ...args);
+};
 // Top-level renderer for a TV custom section in a collection
 const CollectionSectionRenderer: React.FC<{
   section: any;
   index: number;
   collectionId: string;
-}> = ({ section, index, collectionId }) => {
-  const [api] = useAtom(apiAtom);
-  const [user] = useAtom(userAtom);
-  const resolver = section.items;
-  const displayTitle = section.title || `Section ${index + 1}`;
-  const qKey = [
-    "tvSidebarSectionCollection",
-    collectionId,
-    displayTitle,
-    resolver?.sortBy?.join("-") || "",
-    resolver?.sortOrder?.join("-") || "",
-    resolver?.includeItemTypes?.join("-") || "",
-    String(resolver?.limit || ""),
-  ];
-  const { data: sectionItems } = useQuery({
-    queryKey: qKey,
-    queryFn: async () => {
-      if (!api || !user?.Id || !resolver) return [] as BaseItemDto[];
-      const response = await getItemsApi(api).getItems({
-        userId: user.Id,
-        parentId: collectionId,
-        sortBy: resolver.sortBy as any,
-        sortOrder: resolver.sortOrder as any,
-        includeItemTypes: resolver.includeItemTypes as any,
-        limit: resolver.limit ?? 20,
-        recursive: true,
-        fields: ["PrimaryImageAspectRatio"],
-        enableImageTypes: ["Primary", "Thumb", "Backdrop"],
-      });
-      return response.data.Items || [];
-    },
-    staleTime: 60 * 1000,
-    enabled: !!api && !!user?.Id && !!resolver,
-  });
-  if (!resolver) return null;
-  const items = sectionItems || [];
-  return (
-    <View className='mb-6'>
-      {displayTitle ? (
-        <Text className='text-xl font-bold mb-2 px-4'>{displayTitle}</Text>
-      ) : null}
-      <FlashList
-        horizontal={section.orientation === "horizontal"}
-        // Disable vertical scrolling for nested lists to avoid nested scroll issues
-        // FlashList forwards scrollEnabled to the underlying scroll view
-        scrollEnabled={section.orientation === "horizontal"}
-        estimatedItemSize={250}
-        data={items}
-        keyExtractor={(it: BaseItemDto) => it.Id || Math.random().toString()}
-        renderItem={({ item }) => (
-          <TouchableItemRouter
-            key={item.Id}
-            style={{ width: 180, marginHorizontal: 8 }}
-            item={item}
-          >
-            <View style={{ width: 170 }}>
-              <ItemPoster item={item} />
-              <ItemCardText item={item} />
-            </View>
-          </TouchableItemRouter>
-        )}
-        contentContainerStyle={{ paddingHorizontal: 12 }}
-        ItemSeparatorComponent={() =>
-          section.orientation === "horizontal" ? (
-            <View style={{ width: 4 }} />
-          ) : (
-            <View style={{ height: 8 }} />
-          )
-        }
-      />
-    </View>
-  );
-};
+}> = memo(
+  ({ section, index, collectionId }) => {
+    devLog("Rendered section", section);
+    const [api] = useAtom(apiAtom);
+    const [user] = useAtom(userAtom);
+    const resolver = section.items;
+    const displayTitle = section.title || `Section ${index + 1}`;
+    const qKey = [
+      "tvSidebarSectionCollection",
+      collectionId,
+      displayTitle,
+      resolver?.sortBy?.join("-") || "",
+      resolver?.sortOrder?.join("-") || "",
+      resolver?.includeItemTypes?.join("-") || "",
+      String(resolver?.limit || ""),
+    ];
+    const { data: sectionItems } = useQuery({
+      queryKey: qKey,
+      queryFn: async () => {
+        if (!api || !user?.Id || !resolver) return [] as BaseItemDto[];
+        const response = await getItemsApi(api).getItems({
+          userId: user.Id,
+          parentId: collectionId,
+          sortBy: resolver.sortBy as any,
+          sortOrder: resolver.sortOrder as any,
+          includeItemTypes: resolver.includeItemTypes as any,
+          limit: resolver.limit ?? 20,
+          recursive: true,
+          fields: ["PrimaryImageAspectRatio"],
+          enableImageTypes: ["Primary", "Thumb", "Backdrop"],
+        });
+        return response.data.Items || [];
+      },
+      staleTime: 60 * 1000,
+      enabled: !!api && !!user?.Id && !!resolver,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    });
+    const items = sectionItems || [];
+    const keyExtractor = useCallback(
+      (it: BaseItemDto, idx: number) => it.Id || `${displayTitle}-${idx}`,
+      [displayTitle],
+    );
+    const renderItem = useCallback(
+      ({ item }: { item: BaseItemDto }) => (
+        <TouchableItemRouter
+          style={{ width: 180, marginHorizontal: 8 }}
+          item={item}
+        >
+          <View style={{ width: 170 }}>
+            <ItemPoster item={item} />
+            <ItemCardText item={item} />
+          </View>
+        </TouchableItemRouter>
+      ),
+      [],
+    );
+    if (!resolver) return null;
+    return (
+      <View className='mb-6'>
+        {displayTitle ? (
+          <Text className='text-xl font-bold mb-2 px-4'>{displayTitle}</Text>
+        ) : null}
+        <View style={{ height: 260, width: SCREEN_WIDTH }}>
+          <FlashList
+            horizontal={section.orientation === "horizontal"}
+            // Disable vertical scrolling for nested lists to avoid nested scroll issues
+            // FlashList forwards scrollEnabled to the underlying scroll view
+            scrollEnabled={section.orientation === "horizontal"}
+            estimatedItemSize={250}
+            estimatedListSize={{ height: 260, width: SCREEN_WIDTH }}
+            data={items}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            contentContainerStyle={{ paddingHorizontal: 12 }}
+            ItemSeparatorComponent={() =>
+              section.orientation === "horizontal" ? (
+                <View style={{ width: 4 }} />
+              ) : (
+                <View style={{ height: 8 }} />
+              )
+            }
+          />
+        </View>
+      </View>
+    );
+  },
+  (prev, next) => {
+    const sig = (s: any) => {
+      const r = s?.items || {};
+      return [
+        s?.title,
+        s?.orientation,
+        (r.includeItemTypes || []).join(","),
+        (r.sortBy || []).join(","),
+        (r.sortOrder || []).join(","),
+        String(r.limit ?? ""),
+      ].join("|");
+    };
+    return (
+      prev.collectionId === next.collectionId &&
+      prev.index === next.index &&
+      sig(prev.section) === sig(next.section)
+    );
+  },
+);
 
 const page: React.FC = () => {
   const searchParams = useLocalSearchParams();
@@ -169,6 +206,8 @@ const page: React.FC = () => {
       const data = response.data;
       return data;
     },
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     enabled: !!api && !!user?.Id && !!collectionId,
     staleTime: 60 * 1000,
   });
@@ -233,7 +272,7 @@ const page: React.FC = () => {
     ],
   );
 
-  const { data, isFetching, fetchNextPage, hasNextPage } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
     queryKey: [
       "collection-items",
       collection,
@@ -265,6 +304,8 @@ const page: React.FC = () => {
     },
     initialPageParam: 0,
     enabled: !!api && !!user?.Id && !!collection,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const flatData = useMemo(() => {
@@ -309,7 +350,10 @@ const page: React.FC = () => {
     [orientation],
   );
 
-  const keyExtractor = useCallback((item: BaseItemDto) => item.Id || "", []);
+  const keyExtractor = useCallback(
+    (item: BaseItemDto, index: number) => item.Id || `${index}`,
+    [],
+  );
 
   const ListHeaderComponent = useCallback(
     () => (
@@ -486,7 +530,6 @@ const page: React.FC = () => {
       setSortBy,
       sortOrder,
       setSortOrder,
-      isFetching,
       tvCustomSections?.sections,
     ],
   );
@@ -497,6 +540,7 @@ const page: React.FC = () => {
 
   return (
     <FlashList
+      style={{ flex: 1 }}
       ListEmptyComponent={
         <View className='flex flex-col items-center justify-center h-full'>
           <Text className='font-bold text-xl text-neutral-500'>
