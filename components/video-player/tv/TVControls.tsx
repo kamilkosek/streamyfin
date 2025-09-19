@@ -4,6 +4,7 @@ import type {
   BaseItemDto,
   MediaSourceInfo,
 } from "@jellyfin/sdk/lib/generated-client";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -44,6 +45,7 @@ import { Colors } from "@/constants/Colors";
 import { usePlaybackManager } from "@/hooks/usePlaybackManager";
 import { useTrickplay } from "@/hooks/useTrickplay";
 import type { DownloadedItem } from "@/providers/Downloads/types";
+import { getPrimaryImageUrl } from "@/utils/jellyfin/image/getPrimaryImageUrl";
 import { useSegments } from "@/utils/segments";
 import { secondsToMs, secondsToTicks, ticksToMs } from "@/utils/time";
 import TVSlider from "./TVSlider";
@@ -154,6 +156,10 @@ type TVControlsProps = {
   // For fetching segments (optional)
   api?: Api | null;
   downloadedFiles?: DownloadedItem[] | undefined;
+  // Next episode overlay (TV)
+  nextItem?: BaseItemDto | null;
+  handleNextEpisodeAutoPlay?: () => void;
+  handleNextEpisodeManual?: () => void;
 };
 
 export const TVControls: React.FC<TVControlsProps> = ({
@@ -183,7 +189,13 @@ export const TVControls: React.FC<TVControlsProps> = ({
   onSkipIntro,
   api,
   downloadedFiles,
+  nextItem,
+  handleNextEpisodeAutoPlay,
+  handleNextEpisodeManual,
 }) => {
+  const devLog = useCallback((...args: any[]) => {
+    if (__DEV__) console.log("[TVControls]", ...args);
+  }, []);
   const insets = useSafeAreaInsets();
   usePlaybackManager();
   const { t } = useTranslation();
@@ -338,6 +350,12 @@ export const TVControls: React.FC<TVControlsProps> = ({
     isVlc,
   });
 
+  // Compute current seconds for segment checks
+  const currentSeconds = React.useMemo(
+    () => (isVlc ? Math.floor(currentTime / 1000) : Math.floor(currentTime)),
+    [currentTime, isVlc],
+  );
+
   // Fetch intro segments for highlighting on the slider (optional)
   const { data: segData } = useSegments(
     item?.Id ?? "",
@@ -347,16 +365,137 @@ export const TVControls: React.FC<TVControlsProps> = ({
   );
   const sliderSegments = React.useMemo(() => {
     const intro = segData?.introSegments ?? [];
-    if (!intro.length)
-      return [] as { start: number; end: number; color?: string }[];
-    return intro
-      .filter((s) => Number.isFinite(s.startTime) && Number.isFinite(s.endTime))
-      .map((s) => ({
-        start: isVlc ? secondsToMs(s.startTime) : secondsToTicks(s.startTime),
-        end: isVlc ? secondsToMs(s.endTime) : secondsToTicks(s.endTime),
-        color: "rgba(38, 249, 108, 0.6)", // subtle primary tint
-      }));
-  }, [segData?.introSegments, isVlc]);
+    const credits = segData?.creditSegments ?? [];
+    const mapSegments = (
+      arr: { startTime: number; endTime: number }[],
+      color: string,
+    ) =>
+      arr
+        .filter(
+          (s) => Number.isFinite(s.startTime) && Number.isFinite(s.endTime),
+        )
+        .map((s) => ({
+          start: isVlc ? secondsToMs(s.startTime) : secondsToTicks(s.startTime),
+          end: isVlc ? secondsToMs(s.endTime) : secondsToTicks(s.endTime),
+          color,
+        }));
+    return [
+      ...mapSegments(intro, "rgba(38, 249, 108, 0.6)"),
+      ...mapSegments(credits, "rgba(255, 215, 0, 0.6)"),
+    ] as { start: number; end: number; color?: string }[];
+  }, [segData?.introSegments, segData?.creditSegments, isVlc]);
+
+  // --- Next Episode Preview Overlay state and timers ---
+  const [showNextOverlay, setShowNextOverlay] = useState(false);
+  const [overlayCancelled, setOverlayCancelled] = useState(false);
+  const overlayTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [remainingMs, setRemainingMs] = useState<number>(
+    CONTROLS_CONSTANTS.TIMEOUT_BEFORE_AUTO_SKIP_CREDITS_MS,
+  );
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+
+  const clearOverlayTimers = useCallback(() => {
+    if (overlayTimeoutRef.current) {
+      clearTimeout(overlayTimeoutRef.current);
+      overlayTimeoutRef.current = null;
+    }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  }, []);
+
+  // --- Next Episode Overlay timing (pre-credits and during credits) ---
+  const creditSeg = segData?.creditSegments?.[0];
+  const preSeconds =
+    CONTROLS_CONSTANTS.TIME_BEFORE_SKIP_CREDITS_OVERLAY_MS / 1000;
+  const creditStart = creditSeg ? Math.floor(creditSeg.startTime) : null;
+  const creditEnd = creditSeg ? Math.ceil(creditSeg.endTime) : null;
+  const preWindowStart =
+    creditStart != null ? Math.max(0, creditStart - preSeconds) : null;
+
+  const inCredits = React.useMemo(() => {
+    if (creditStart == null || creditEnd == null) return false;
+    return currentSeconds >= creditStart && currentSeconds <= creditEnd;
+  }, [creditStart, creditEnd, currentSeconds]);
+
+  const inPreWindow = React.useMemo(() => {
+    if (preWindowStart == null || creditStart == null) return false;
+    return currentSeconds >= preWindowStart && currentSeconds <= creditStart;
+  }, [preWindowStart, creditStart, currentSeconds]);
+
+  useEffect(() => {
+    const inWindow = (inPreWindow || inCredits) && !!nextItem;
+
+    if (!inWindow) {
+      setOverlayCancelled(false);
+      if (showNextOverlay) setShowNextOverlay(false);
+      clearOverlayTimers();
+      return;
+    }
+
+    if (
+      !overlayCancelled &&
+      !showNextOverlay &&
+      preWindowStart != null &&
+      currentSeconds >= preWindowStart
+    ) {
+      setShowNextOverlay(true);
+      setRemainingMs(CONTROLS_CONSTANTS.TIMEOUT_BEFORE_AUTO_SKIP_CREDITS_MS);
+      const startedAt = Date.now();
+      const total = CONTROLS_CONSTANTS.TIMEOUT_BEFORE_AUTO_SKIP_CREDITS_MS;
+      countdownIntervalRef.current = setInterval(() => {
+        const elapsed = Date.now() - startedAt;
+        setRemainingMs(Math.max(0, total - elapsed));
+      }, 200);
+      overlayTimeoutRef.current = setTimeout(() => {
+        clearOverlayTimers();
+        handleNextEpisodeAutoPlay?.();
+      }, total);
+    }
+  }, [
+    inPreWindow,
+    inCredits,
+    nextItem,
+    overlayCancelled,
+    showNextOverlay,
+    preWindowStart,
+    currentSeconds,
+    clearOverlayTimers,
+    handleNextEpisodeAutoPlay,
+  ]);
+
+  // Cleanup when component unmounts or item changes
+  useEffect(() => clearOverlayTimers, [clearOverlayTimers]);
+
+  const cancelAutoSkip = useCallback(() => {
+    setOverlayCancelled(true);
+    setShowNextOverlay(false);
+    clearOverlayTimers();
+  }, [clearOverlayTimers]);
+
+  const playNextNow = useCallback(() => {
+    clearOverlayTimers();
+    handleNextEpisodeManual?.();
+  }, [handleNextEpisodeManual, clearOverlayTimers]);
+
+  const nextPreviewUrl = React.useMemo(() => {
+    if (!api || !nextItem) return null;
+    try {
+      return getPrimaryImageUrl({
+        api,
+        item: nextItem,
+        quality: 80,
+        width: 360,
+      });
+    } catch {
+      return null;
+    }
+  }, [api, nextItem]);
+
+  const secondsLeft = Math.ceil(remainingMs / 1000);
 
   // Initialize progress and max in the correct units (ms for VLC, ticks otherwise)
   useEffect(() => {
@@ -372,8 +511,7 @@ export const TVControls: React.FC<TVControlsProps> = ({
   useTVEventHandler((evt) => {
     if (!evt) return;
     const type = evt.eventType;
-    if (__DEV__)
-      console.log("TVControls event", type, "visible:", showControls);
+    devLog("TV event", type);
 
     // Consider only direct user inputs for showing controls
     const userInputTypes = new Set([
@@ -662,10 +800,10 @@ export const TVControls: React.FC<TVControlsProps> = ({
                 </View>
               </Animated.View>
 
-              {!showSkipIntroButton && controls}
+              {!showSkipIntroButton && !showNextOverlay && controls}
 
               {/* Progress bar (hidden when Skip Intro is shown) */}
-              {!showSkipIntroButton && (
+              {!showSkipIntroButton && !showNextOverlay && (
                 <View style={{ marginTop: 8 }}>
                   <TVSlider
                     progress={progress}
@@ -739,6 +877,82 @@ export const TVControls: React.FC<TVControlsProps> = ({
             onClose={() => setAudioSheetVisible(false)}
           />
         </Animated.View>
+        {/* Bottom-right Next Episode overlay (TV) */}
+        {showNextOverlay && nextItem && (
+          <View
+            style={{
+              position: "absolute",
+              right: insets.right + 24,
+              bottom: insets.bottom + 24,
+              width: 200,
+              borderRadius: 12,
+              overflow: "hidden",
+              backgroundColor: "rgba(0,0,0,0.6)",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.12)",
+            }}
+            pointerEvents={"auto"}
+          >
+            {/* Preview image */}
+            {nextPreviewUrl && (
+              <Image
+                source={{ uri: nextPreviewUrl }}
+                style={{ width: "100%", height: 120 }}
+                contentFit='cover'
+              />
+            )}
+            {/* Info and actions */}
+            <View style={{ padding: 12, gap: 8 }}>
+              <Text className='font-bold'>
+                {t("player.next_episode", "Next Episode")}
+              </Text>
+              <Text className='opacity-70'>
+                {nextItem.SeriesName
+                  ? `${nextItem.SeriesName} — ${nextItem.Name}`
+                  : nextItem.Name}
+              </Text>
+              <Text className='opacity-70'>
+                {t("player.starting_in", "Starting in {{n}}s", {
+                  n: secondsLeft,
+                })}
+              </Text>
+
+              <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+                <FocusableItem
+                  onPress={playNextNow}
+                  hasTVPreferredFocus={showNextOverlay}
+                >
+                  <View
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      backgroundColor: Colors.primary,
+                    }}
+                  >
+                    <Text style={{ color: "#000" }} className='font-bold'>
+                      {t("player.play_now", "Play now")}
+                    </Text>
+                  </View>
+                </FocusableItem>
+                <FocusableItem onPress={cancelAutoSkip}>
+                  <View
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      backgroundColor: "rgba(255,255,255,0.15)",
+                    }}
+                  >
+                    <Text className='font-bold'>
+                      {t("player.cancel", "Cancel")}
+                    </Text>
+                  </View>
+                </FocusableItem>
+              </View>
+            </View>
+          </View>
+        )}
       </VideoProvider>
     </ControlProvider>
   );

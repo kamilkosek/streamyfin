@@ -1034,6 +1034,16 @@ export default function DirectPlayer() {
             onSkipIntro={skipIntroTV}
             api={api}
             downloadedFiles={downloadedFiles}
+            nextItem={nextItem}
+            handleNextEpisodeAutoPlay={() => {
+              const advanced = goToNextItem({ isAutoPlay: true });
+              if (!advanced) {
+                // If settings prevent autoplay, ignore
+              }
+            }}
+            handleNextEpisodeManual={() => {
+              goToNextItem({ isAutoPlay: false });
+            }}
           />
         ))}
       {Platform.isTV &&
