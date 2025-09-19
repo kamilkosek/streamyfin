@@ -1,7 +1,8 @@
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { TouchableOpacity, View, type ViewProps } from "react-native";
+import { useMemo, useState } from "react";
+import { Platform, TouchableOpacity, View, type ViewProps } from "react-native";
+import { useActionSheet } from "@/components/actionsheet";
 import { Text } from "@/components/common/Text";
 import { FilterSheet } from "./FilterSheet";
 
@@ -34,6 +35,7 @@ export const FilterButton = <T,>({
   ...props
 }: FilterButtonProps<T>) => {
   const [open, setOpen] = useState(false);
+  const { showActionSheet } = useActionSheet();
 
   const { data: filters } = useQuery<T[]>({
     queryKey: ["filters", title, queryKey, id],
@@ -42,13 +44,43 @@ export const FilterButton = <T,>({
     enabled: !!id && !!queryFn && !!queryKey,
   });
 
+  // Build ActionSheet options for TV
+  const tvOptions = useMemo(() => {
+    if (!filters || filters.length === 0) return [];
+    return filters.map((item) => ({
+      title: String(renderItemLabel(item) as any),
+      onPress: () => {
+        if (multiple) {
+          // Toggle selection; sheet will close, user can reopen to add more
+          const exists = values.some((v) => (v as any) === (item as any));
+          if (exists) {
+            set(values.filter((v) => (v as any) !== (item as any)));
+          } else {
+            set([...values, item]);
+          }
+        } else {
+          set([item]);
+        }
+      },
+    }));
+  }, [filters, renderItemLabel, multiple, values, set]);
+
+  const handlePress = () => {
+    if (Platform.isTV) {
+      if (!filters || filters.length === 0) return;
+      showActionSheet({
+        title,
+        options: tvOptions,
+      });
+      return;
+    }
+    // Mobile: open BottomSheet filter
+    if (filters?.length) setOpen(true);
+  };
+
   return (
     <>
-      <TouchableOpacity
-        onPress={() => {
-          filters?.length && setOpen(true);
-        }}
-      >
+      <TouchableOpacity onPress={handlePress}>
         <View
           className={`
             px-3 py-1.5 rounded-full flex flex-row items-center space-x-1
@@ -85,18 +117,20 @@ export const FilterButton = <T,>({
           )}
         </View>
       </TouchableOpacity>
-      <FilterSheet<T>
-        title={title}
-        open={open}
-        setOpen={setOpen}
-        data={filters}
-        values={values}
-        set={set}
-        renderItemLabel={renderItemLabel}
-        searchFilter={searchFilter}
-        disableSearch={disableSearch}
-        multiple={multiple}
-      />
+      {!Platform.isTV && (
+        <FilterSheet<T>
+          title={title}
+          open={open}
+          setOpen={setOpen}
+          data={filters}
+          values={values}
+          set={set}
+          renderItemLabel={renderItemLabel}
+          searchFilter={searchFilter}
+          disableSearch={disableSearch}
+          multiple={multiple}
+        />
+      )}
     </>
   );
 };
